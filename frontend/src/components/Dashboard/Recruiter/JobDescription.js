@@ -7,8 +7,12 @@ import {
   Typography,
   TextField,
   Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
 } from "@mui/material";
-import { format, addDays } from "date-fns";
 
 const JobDescription = ({ role, setCandidates }) => {
   const { user, updateRoleDetails } = useContext(AuthContext);
@@ -16,25 +20,36 @@ const JobDescription = ({ role, setCandidates }) => {
   const [loading, setLoading] = useState(false);
   const [candidates, setCandidatesLocal] = useState([]);
   const [numCandidates, setNumCandidates] = useState(10);
-  const [deadlineMet, setDeadlineMet] = useState(false);
-  const [currentRole, setCurrentRole] = useState(null);
+  const [currentRole, setCurrentRole] = useState(role);
+  const [openDialog, setOpenDialog] = useState(false);
+  const [selectedCandidates, setSelectedCandidates] = useState([]);
+  const [conductingInterviews, setConductingInterviews] = useState(false);
+  const [columns, setColumns] = useState([
+    { field: "id", headerName: "ID", width: 90 },
+    { field: "name", headerName: "Name", width: 150 },
+    { field: "gpa", headerName: "GPA", width: 100 },
+    { field: "gender", headerName: "Gender", width: 100 },
+    {
+      field: "resume",
+      headerName: "Resume",
+      width: 200,
+      renderCell: (params) => (
+        <a href={params.value} target="_blank" rel="noopener noreferrer">
+          View Resume
+        </a>
+      ),
+    },
+  ]);
 
   useEffect(() => {
     const roleData = user?.details?.Roles?.find((r) => r.RoleTitle === role);
     setCurrentRole(roleData);
 
-    if (roleData && roleData.Deadline) {
-      const deadlineDate = new Date(roleData.Deadline);
-      if (deadlineDate <= new Date()) {
-        setDeadlineMet(true);
-      }
-    }
-
     if (roleData?.Status === 1) {
       setCandidatesLocal(roleData.Candidates);
-      setCandidates(roleData.Candidates);
+      setCandidates([]);
     }
-  }, [role]);
+  }, [role, user.details]);
 
   if (!currentRole) {
     return (
@@ -47,28 +62,22 @@ const JobDescription = ({ role, setCandidates }) => {
   const handleJDUpload = (event) => {
     setJdFile(event.target.files[0]);
     setLoading(true);
+    let currentCandidates = sampleCandidates.map((candidate) => candidate.id);
+    setCandidates(currentCandidates);
+    setCandidatesLocal(currentCandidates);
 
-    const deadline = addDays(new Date(), 7);
     const updatedRole = {
       ...currentRole,
-      JD: jdFile.name,
-      Deadline: deadline,
+      Candidates: currentCandidates,
+      JD: event.target.files[0].name,
       Status: 1,
     };
 
-    updateRoleDetails(updatedRole);
-
     setTimeout(() => {
-      const filteredCandidates = simulateFetchCandidates(numCandidates);
-      setCandidatesLocal(filteredCandidates);
-      setCandidates(filteredCandidates);
       setLoading(false);
+    }, 5000);
 
-      updatedRole.Candidates = filteredCandidates.map(
-        (candidate) => candidate.id
-      );
-      updateRoleDetails(updatedRole);
-    }, 10000);
+    updateRoleDetails(updatedRole);
   };
 
   const sampleCandidates = [
@@ -183,48 +192,70 @@ const JobDescription = ({ role, setCandidates }) => {
     return sampleCandidates.slice(0, n);
   };
 
-  const columns = [
-    { field: "name", headerName: "Name", width: 150 },
-    { field: "gpa", headerName: "GPA", width: 100 },
-    { field: "gender", headerName: "Gender", width: 100 },
-    {
-      field: "resume",
-      headerName: "Resume",
-      width: 200,
-      renderCell: (params) => (
-        <a href={params.value} target="_blank" rel="noopener noreferrer">
-          View Resume
-        </a>
-      ),
-    },
-  ];
-
   const handleGetCandidates = () => {
+    setLoading(true);
     const filteredCandidates = simulateFetchCandidates(numCandidates);
     setCandidatesLocal(filteredCandidates);
     setCandidates(filteredCandidates);
 
-    const updatedRole = {
-      ...currentRole,
-      Candidates: filteredCandidates.map((candidate) => candidate.id),
-    };
-    updateRoleDetails(updatedRole);
+    setTimeout(() => {
+      setLoading(false);
+      const updatedRole = {
+        ...currentRole,
+        Status: 2,
+        Candidates: filteredCandidates.map((candidate) => candidate.id),
+      };
+      updateRoleDetails(updatedRole);
+    }, 10000);
+  };
+
+  const handleConductInterviews = () => {
+    setOpenDialog(true);
+  };
+
+  const handleConfirmInterviews = () => {
+    setOpenDialog(false);
+    setLoading(true);
+
+    // Filter selected candidates
+    const selectedCandidateData = candidates.filter((candidate) =>
+      selectedCandidates.includes(candidate.id)
+    );
+
+    // Simulate interview process
+    setTimeout(() => {
+      const interviewedCandidates = selectedCandidateData.map((candidate) => ({
+        ...candidate,
+        score: Math.floor(Math.random() * 100), // Simulate AI-generated score
+      }));
+      if (!columns.some((column) => column.field === "score")) {
+        setColumns((prevColumns) => [
+          ...prevColumns,
+          { field: "score", headerName: "Score", width: 100 },
+        ]);
+      }
+
+      setCandidatesLocal(interviewedCandidates);
+      setCandidates(interviewedCandidates);
+      setConductingInterviews(true); // Set to true after conducting interviews
+      setLoading(false);
+    }, 10000);
   };
 
   return (
     <div>
-      <h3>Job Description for {role} role</h3>
+      <h2>{role} role</h2>
+
+      {currentRole?.description && (
+        <Typography variant="body1" style={{ marginBottom: "20px" }}>
+          {currentRole.description}
+        </Typography>
+      )}
 
       {currentRole.Status === 0 && (
         <>
+          <h3>Upload Job Description</h3>
           <input type="file" onChange={handleJDUpload} />
-          <TextField
-            label="Number of Candidates to Fetch"
-            type="number"
-            value={numCandidates}
-            onChange={(e) => setNumCandidates(e.target.value)}
-            fullWidth
-          />
           {jdFile && <p>Uploaded: {jdFile.name}</p>}
         </>
       )}
@@ -238,16 +269,25 @@ const JobDescription = ({ role, setCandidates }) => {
         >
           <CircularProgress />
           <Typography variant="body1" style={{ marginLeft: "10px" }}>
-            Processing the job description, please wait...
+            Processing, please wait...
           </Typography>
         </Box>
       )}
 
-      {deadlineMet && currentRole.Status === 1 && (
+      {!loading && currentRole.Status === 1 && (
         <>
           <Typography variant="h6">
             Deadline met. {candidates.length} candidates registered.
           </Typography>
+          <Box display="flex" marginTop="20px">
+            <TextField
+              label="Number of Candidates to Fetch"
+              type="number"
+              value={numCandidates}
+              onChange={(e) => setNumCandidates(e.target.value)}
+              fullWidth
+            />
+          </Box>
           <Button
             variant="contained"
             color="primary"
@@ -258,29 +298,49 @@ const JobDescription = ({ role, setCandidates }) => {
         </>
       )}
 
-      {!loading && candidates.length > 0 && currentRole.Status === 1 && (
-        <div style={{ marginTop: "20px", height: 400, width: "100%" }}>
-          <DataGrid
-            rows={candidates}
-            columns={columns}
-            slots={{ toolbar: GridToolbar }}
-            checkboxSelection
-          />
-        </div>
-      )}
-
-      {currentRole.Status === 2 && (
+      {!loading && candidates.length > 0 && currentRole.Status === 2 && (
         <>
-          <Typography variant="h6">
-            Candidates selected for interviews:
-          </Typography>
-          <DataGrid
-            rows={candidates}
-            columns={columns}
-            slots={{ toolbar: GridToolbar }}
-          />
+          <div style={{ marginTop: "20px", height: 400, width: "100%" }}>
+            <DataGrid
+              rows={candidates}
+              columns={columns}
+              slots={{ toolbar: GridToolbar }}
+              checkboxSelection
+              disableRowSelectionOnClick
+              onRowSelectionModelChange={(newSelection) => {
+                setSelectedCandidates(newSelection);
+              }}
+            />
+          </div>
+
+          <Button
+            variant="contained"
+            color="secondary"
+            style={{ marginTop: "20px" }}
+            onClick={handleConductInterviews}
+            disabled={selectedCandidates.length === 0}
+          >
+            Conduct Interviews
+          </Button>
         </>
       )}
+      <Dialog open={openDialog} onClose={() => setOpenDialog(false)}>
+        <DialogTitle>{"Conduct AI-assisted Interviews?"}</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Conduct AI-assisted interviews for all the selected candidates? The
+            rest of them will be rejected from the process.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenDialog(false)} color="primary">
+            Cancel
+          </Button>
+          <Button onClick={handleConfirmInterviews} color="primary" autoFocus>
+            Continue
+          </Button>
+        </DialogActions>
+      </Dialog>
     </div>
   );
 };

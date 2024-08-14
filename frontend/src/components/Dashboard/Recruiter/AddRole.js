@@ -1,4 +1,4 @@
-import React, { useState, useContext } from "react";
+import React, { useState } from "react";
 import {
   Button,
   TextField,
@@ -6,15 +6,13 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Box,
 } from "@mui/material";
-import { AuthContext } from "../../../context/AuthContext";
 
-const RoleManagement = ({ roles, setRoles }) => {
-  const { updateRoleDetails } = useContext(AuthContext);
+const AddRole = ({ setRoles }) => {
   const [open, setOpen] = useState(false);
   const [newRole, setNewRole] = useState("");
   const [newRoleDescription, setNewRoleDescription] = useState("");
-  const [registrationDeadline, setRegistrationDeadline] = useState("");
 
   const handleAddRole = () => {
     const newRoleData = {
@@ -26,12 +24,10 @@ const RoleManagement = ({ roles, setRoles }) => {
       Status: 0, // Initially, no JD is uploaded
     };
 
-    setRoles([...roles, newRoleData]);
+    setRoles(newRoleData);
     setNewRole("");
     setNewRoleDescription("");
     setOpen(false);
-
-    updateRoleDetails(newRoleData);
   };
 
   return (
@@ -59,14 +55,8 @@ const RoleManagement = ({ roles, setRoles }) => {
             onChange={(e) => setNewRoleDescription(e.target.value)}
             fullWidth
           />
-          <TextField
-            label="Registration Deadline"
-            type="datetime-local"
-            value={registrationDeadline}
-            onChange={(e) => setRegistrationDeadline(e.target.value)}
-            fullWidth
-          />
         </DialogContent>
+
         <DialogActions>
           <Button onClick={() => setOpen(false)} color="primary">
             Cancel
@@ -80,4 +70,4 @@ const RoleManagement = ({ roles, setRoles }) => {
   );
 };
 
-export default RoleManagement;
+export default AddRole;

@@ -47,9 +47,14 @@ const AuthProvider = ({ children }) => {
 
   const updateRoleDetails = (updatedRole) => {
     setUser((prevUser) => {
-      const updatedRoles = prevUser.details.Roles.map((role) =>
-        role.RoleTitle === updatedRole.RoleTitle ? updatedRole : role
+      const roleExists = prevUser.details.Roles.some(
+        (role) => role.RoleTitle === updatedRole.RoleTitle
       );
+      const updatedRoles = roleExists
+        ? prevUser.details.Roles.map((role) =>
+            role.RoleTitle === updatedRole.RoleTitle ? updatedRole : role
+          )
+        : [...prevUser.details.Roles, updatedRole];
       return {
         ...prevUser,
         details: {

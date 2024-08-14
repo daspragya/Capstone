@@ -18,7 +18,14 @@ import CheckIcon from "@mui/icons-material/Check";
 import InterviewPage from "./InterviewPage";
 
 const RoleDetails = ({ role, onBack, onBackToCompany, company }) => {
-  const initialStatus = role.id === 4 ? "Rejected" : "Apply"; // Initialize role.id=4 with 'Rejected'
+  let initialStatus;
+  if (role.id === 4) {
+    initialStatus = "Rejected";
+  } else if (role.id === 3) {
+    initialStatus = "Accepted";
+  } else {
+    initialStatus = "Apply";
+  }
   const [status, setStatus] = useState(initialStatus);
   const [showInterview, setShowInterview] = useState(false);
   const [openConfirm, setOpenConfirm] = useState(false);
@@ -37,7 +44,7 @@ const RoleDetails = ({ role, onBack, onBackToCompany, company }) => {
     } else if (status === "Processing") {
       setTimeout(() => {
         setStatus("Accepted");
-      }, 20000); // 20 seconds delay
+      }, 10000); // 20 seconds delay
     }
   }, [status, role.id]);
 

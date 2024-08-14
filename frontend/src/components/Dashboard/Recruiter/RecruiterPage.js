@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext } from "react";
 import ProfileUpdate from "./ProfileUpdate";
-import RoleManagement from "./RoleManagement";
+import AddRole from "./AddRole";
 import JobDescription from "./JobDescription";
 import { Tabs, Tab, Box, Button } from "@mui/material";
 import { AuthContext } from "../../../context/AuthContext";
@@ -21,13 +21,11 @@ const RecruiterPage = ({ user }) => {
 
   const handleTabChange = (event, newValue) => {
     setSelectedTab(newValue);
-    setCandidates([]); // Reset the candidates when switching roles
+    setCandidates(roles[newValue].Candidates);
   };
 
   const handleAddRole = (newRole) => {
-    const updatedRoles = [...roles, newRole];
-    setRoles(updatedRoles);
-    updateRoleDetails({ Roles: updatedRoles });
+    updateRoleDetails(newRole);
   };
 
   return (
@@ -36,7 +34,7 @@ const RecruiterPage = ({ user }) => {
         <ProfileUpdate user={user} setDetailsExist={setDetailsExist} />
       ) : (
         <>
-          <RoleManagement roles={roles} setRoles={handleAddRole} />
+          <AddRole setRoles={handleAddRole} />
           <Box
             sx={{
               borderBottom: 1,
@@ -60,19 +58,6 @@ const RecruiterPage = ({ user }) => {
               role={roles[selectedTab].RoleTitle}
               setCandidates={setCandidates}
             />
-          )}
-
-          {candidates.length > 0 && roles[selectedTab].Status === 1 && (
-            <Button
-              variant="contained"
-              color="primary"
-              onClick={() =>
-                alert(`Conducting interviews for selected candidates`)
-              }
-              style={{ marginTop: "20px" }}
-            >
-              Conduct Online Interviews
-            </Button>
           )}
         </>
       )}
