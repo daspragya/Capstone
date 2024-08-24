@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useContext } from "react";
 import {
   List,
   ListItemButton,
@@ -11,8 +11,10 @@ import RoleDetails from "./RoleDetails";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CancelIcon from "@mui/icons-material/Cancel";
 import CheckIcon from "@mui/icons-material/Check";
+import { AuthContext } from "../../../context/AuthContext";
 
 const CompanyDetails = ({ company, onBack, user }) => {
+  const { refreshUserDetails } = useContext(AuthContext);
   const [selectedRole, setSelectedRole] = useState(null);
 
   const handleRoleClick = (role) => {
@@ -20,6 +22,7 @@ const CompanyDetails = ({ company, onBack, user }) => {
   };
 
   const handleBackToRoles = () => {
+    refreshUserDetails();
     setSelectedRole(null);
   };
 
@@ -29,12 +32,26 @@ const CompanyDetails = ({ company, onBack, user }) => {
   };
 
   const renderStatusIcon = (role) => {
-    if (role.id === 4) {
-      return <CancelIcon color="error" style={{ marginLeft: "10px" }} />;
-    } else if (role.id === 3) {
-      return <CheckCircleIcon color="success" style={{ marginLeft: "10px" }} />;
-    } else if (role.id !== 1 && role.id !== 2) {
-      return <CheckIcon style={{ marginLeft: "10px" }} />;
+    // Find the student's application status for this role
+    const application = user.details.application_status.find(
+      (app) => app.role_id === role.role_id
+    );
+
+    if (application) {
+      switch (application.status) {
+        case 5: // Rejected
+          return <CancelIcon color="error" style={{ marginLeft: "10px" }} />;
+        case 4: // Accepted
+          return (
+            <CheckCircleIcon color="success" style={{ marginLeft: "10px" }} />
+          );
+        case 3: // Interview completed
+        case 2: // INterview stage
+        case 1: // JD submitted, registration open
+          return <CheckIcon style={{ marginLeft: "10px" }} />;
+        default:
+          return null;
+      }
     }
     return null;
   };
@@ -61,12 +78,12 @@ const CompanyDetails = ({ company, onBack, user }) => {
           </Typography>
           <List>
             {company.roles.map((role) => (
-              <React.Fragment key={role.id}>
+              <React.Fragment key={role.role_id}>
                 <ListItemButton onClick={() => handleRoleClick(role)}>
                   <ListItemText
                     primary={
                       <>
-                        {role.role}
+                        {role.roleTitle}
                         {renderStatusIcon(role)}
                       </>
                     }
@@ -83,6 +100,7 @@ const CompanyDetails = ({ company, onBack, user }) => {
           onBack={handleBackToRoles}
           onBackToCompany={handleBackToCompany}
           company={company}
+          user={user}
         />
       )}
     </div>

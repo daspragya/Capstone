@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import {
   Typography,
   Button,
@@ -15,46 +15,45 @@ import {
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CancelIcon from "@mui/icons-material/Cancel";
 import CheckIcon from "@mui/icons-material/Check";
+import axios from "axios";
 import InterviewPage from "./InterviewPage";
+import { AuthContext } from "../../../context/AuthContext";
 
-const RoleDetails = ({ role, onBack, onBackToCompany, company }) => {
-  let initialStatus;
-  if (role.id === 4) {
-    initialStatus = "Rejected";
-  } else if (role.id === 3) {
-    initialStatus = "Accepted";
-  } else {
-    initialStatus = "Apply";
-  }
-  const [status, setStatus] = useState(initialStatus);
+const RoleDetails = ({ role, onBack, onBackToCompany, company, user }) => {
+  const { refreshUserDetails } = useContext(AuthContext);
+  const [status, setStatus] = useState(null); // Initialize status as null
   const [showInterview, setShowInterview] = useState(false);
   const [openConfirm, setOpenConfirm] = useState(false);
 
   useEffect(() => {
-    if (status === "Applied") {
-      if (role.id === 2) {
-        setTimeout(() => {
-          setStatus("Ongoing");
-        }, 10000); // 10 seconds delay
-      } else if (role.id === 1) {
-        setTimeout(() => {
-          setStatus("Rejected");
-        }, 10000); // 10 seconds delay
-      }
-    } else if (status === "Processing") {
-      setTimeout(() => {
-        setStatus("Accepted");
-      }, 10000); // 20 seconds delay
+    const application = user.details.application_status.find(
+      (app) => app.role_id === role.role_id
+    );
+
+    if (application) {
+      setStatus(application.status);
+    } else {
+      setStatus(0); // Default to "Apply" status
     }
-  }, [status, role.id]);
+  }, [role, user]);
 
   const handleApply = () => {
     setOpenConfirm(true);
   };
 
-  const handleConfirmSubmit = () => {
+  const handleConfirmSubmit = async () => {
     setOpenConfirm(false);
-    setStatus("Applied");
+
+    try {
+      await axios.post("http://localhost:5000/apply-role", {
+        username: user.username,
+        role_id: role.role_id,
+      });
+
+      refreshUserDetails();
+    } catch (error) {
+      console.error("Error applying for the role:", error);
+    }
   };
 
   const handleCloseConfirm = () => {
@@ -65,24 +64,36 @@ const RoleDetails = ({ role, onBack, onBackToCompany, company }) => {
     setShowInterview(true);
   };
 
-  const handleFinishInterview = () => {
+  const handleFinishInterview = async () => {
     setShowInterview(false);
-    setStatus("Processing");
+    try {
+      await axios.post("http://localhost:5000/complete-interviews", {
+        username: user.username,
+        role_id: role.role_id,
+      });
+      refreshUserDetails();
+    } catch (error) {
+      console.error("Error applying for the role:", error);
+    }
   };
 
   const renderStatusIcon = () => {
-    if (status === "Accepted") {
+    if (status === 4) {
+      // Accepted
       return <CheckCircleIcon color="success" style={{ marginLeft: "10px" }} />;
-    } else if (status === "Rejected") {
+    } else if (status === 5) {
+      // Rejected
       return <CancelIcon color="error" style={{ marginLeft: "10px" }} />;
-    } else if (status !== "Apply") {
+    } else if (status !== 0) {
+      // Applied or other statuses
       return <CheckIcon style={{ marginLeft: "10px" }} />;
     }
     return null;
   };
 
   const renderStatus = () => {
-    if (status === "Apply") {
+    if (status === 0) {
+      // Apply
       return (
         <FormControlLabel
           control={<Checkbox checked={false} onChange={handleApply} />}
@@ -97,9 +108,9 @@ const RoleDetails = ({ role, onBack, onBackToCompany, company }) => {
             color="textSecondary"
             style={{ marginTop: "10px" }}
           >
-            Status: {status} {renderStatusIcon()}
+            Status: {getStatusText(status)} {renderStatusIcon()}
           </Typography>
-          {status === "Ongoing" && (
+          {status === 3 && ( // Interview stage
             <Button
               variant="contained"
               color="secondary"
@@ -111,6 +122,25 @@ const RoleDetails = ({ role, onBack, onBackToCompany, company }) => {
           )}
         </>
       );
+    }
+  };
+
+  const getStatusText = (status) => {
+    switch (status) {
+      case 6:
+        return "Accepted";
+      case 5:
+        return "Rejected";
+      case 4:
+        return "Interview Completed, Processing";
+      case 3:
+        return "Interview Stage";
+      case 2:
+        return "Resume Shortlisted";
+      case 1:
+        return "Applied";
+      default:
+        return "Apply";
     }
   };
 
@@ -126,7 +156,7 @@ const RoleDetails = ({ role, onBack, onBackToCompany, company }) => {
             >
               {company.name}
             </Link>
-            <Typography color="textPrimary">{role.role}</Typography>
+            <Typography color="textPrimary">{role.roleTitle}</Typography>
           </Breadcrumbs>
 
           <Button
@@ -137,9 +167,12 @@ const RoleDetails = ({ role, onBack, onBackToCompany, company }) => {
             Back to Roles
           </Button>
           <Typography variant="h4" gutterBottom>
-            {role.role} {renderStatusIcon()}
+            {role.roleTitle} {renderStatusIcon()}
           </Typography>
           <Typography variant="body1" gutterBottom>
+            {role.roleDescription} {renderStatusIcon()}
+          </Typography>
+          <Typography variant="body2" gutterBottom>
             {role.jd}
           </Typography>
 
@@ -150,7 +183,7 @@ const RoleDetails = ({ role, onBack, onBackToCompany, company }) => {
             <DialogContent>
               <DialogContentText>
                 Are you sure you wish to apply to {company.name} for the role{" "}
-                {role.role} with your current resume?
+                {role.roleTitle} with your current resume?
               </DialogContentText>
             </DialogContent>
             <DialogActions>

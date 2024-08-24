@@ -1,31 +1,36 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect } from "react";
 import ProfileUpdate from "./ProfileUpdate";
 import AddRole from "./AddRole";
-import JobDescription from "./JobDescription";
-import { Tabs, Tab, Box, Button } from "@mui/material";
-import { AuthContext } from "../../../context/AuthContext";
+import RoleManagement from "./RoleManagement";
+import { Tabs, Tab, Box, Typography } from "@mui/material";
+import axios from "axios";
 
 const RecruiterPage = ({ user }) => {
-  const [detailsExist, setDetailsExist] = useState(
-    Object.keys(user.details).length > 0
-  );
+  const [detailsExist, setDetailsExist] = useState(false);
   const [selectedTab, setSelectedTab] = useState(0);
-  const [candidates, setCandidates] = useState([]);
   const [roles, setRoles] = useState([]);
-  const { updateRoleDetails } = useContext(AuthContext);
+
+  const fetchRoles = async () => {
+    try {
+      const response = await axios.get(`http://localhost:5000/get-roles`, {
+        params: { username: user.username },
+      });
+      setRoles(response.data.roles);
+    } catch (error) {
+      console.error("Failed to fetch roles", error);
+    }
+  };
 
   useEffect(() => {
-    setDetailsExist(Object.keys(user.details).length > 0);
-    setRoles(user.details.Roles || []); // Load roles from user details
+    setDetailsExist(user.details.companyName !== "");
+    fetchRoles(); // Load roles from backend when the component mounts
   }, [user.details]);
 
   const handleTabChange = (event, newValue) => {
     setSelectedTab(newValue);
-    setCandidates(roles[newValue].Candidates);
   };
-
-  const handleAddRole = (newRole) => {
-    updateRoleDetails(newRole);
+  const handleRoleUpdate = async () => {
+    await fetchRoles();
   };
 
   return (
@@ -34,30 +39,39 @@ const RecruiterPage = ({ user }) => {
         <ProfileUpdate user={user} setDetailsExist={setDetailsExist} />
       ) : (
         <>
-          <AddRole setRoles={handleAddRole} />
-          <Box
-            sx={{
-              borderBottom: 1,
-              borderColor: "divider",
-              marginBottom: "20px",
-            }}
-          >
-            <Tabs
-              value={selectedTab}
-              onChange={handleTabChange}
-              aria-label="role tabs"
-            >
-              {roles.map((role, index) => (
-                <Tab label={role.RoleTitle} key={index} />
-              ))}
-            </Tabs>
-          </Box>
+          {roles.length === 0 ? (
+            <div style={{ textAlign: "center", marginBottom: "20px" }}>
+              <Typography variant="h6">No roles added yet</Typography>
+              <AddRole setRoles={fetchRoles} user={user} />
+            </div>
+          ) : (
+            <>
+              <AddRole setRoles={fetchRoles} user={user} />
+              <Box
+                sx={{
+                  borderBottom: 1,
+                  borderColor: "divider",
+                  marginBottom: "20px",
+                }}
+              >
+                <Tabs
+                  value={selectedTab}
+                  onChange={handleTabChange}
+                  aria-label="role tabs"
+                >
+                  {roles.map((role, index) => (
+                    <Tab label={role.roleTitle} key={index} />
+                  ))}
+                </Tabs>
+              </Box>
 
-          {roles.length > 0 && (
-            <JobDescription
-              role={roles[selectedTab].RoleTitle}
-              setCandidates={setCandidates}
-            />
+              {roles.length > 0 && (
+                <RoleManagement
+                  role={roles[selectedTab]}
+                  handleRoleUpdate={handleRoleUpdate}
+                />
+              )}
+            </>
           )}
         </>
       )}

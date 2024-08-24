@@ -45,29 +45,25 @@ const AuthProvider = ({ children }) => {
     setUser(null);
   };
 
-  const updateRoleDetails = (updatedRole) => {
-    setUser((prevUser) => {
-      const roleExists = prevUser.details.Roles.some(
-        (role) => role.RoleTitle === updatedRole.RoleTitle
+  const refreshUserDetails = async () => {
+    try {
+      const response = await axios.get(
+        `http://localhost:5000/refresh-user-details`,
+        {
+          params: { username: user.username },
+        }
       );
-      const updatedRoles = roleExists
-        ? prevUser.details.Roles.map((role) =>
-            role.RoleTitle === updatedRole.RoleTitle ? updatedRole : role
-          )
-        : [...prevUser.details.Roles, updatedRole];
-      return {
-        ...prevUser,
-        details: {
-          ...prevUser.details,
-          Roles: updatedRoles,
-        },
-      };
-    });
+
+      // Update the user state with the refreshed details
+      setUser(response.data);
+    } catch (error) {
+      console.error("Error refreshing user details:", error);
+    }
   };
 
   return (
     <AuthContext.Provider
-      value={{ user, signup, login, logout, updateRoleDetails }}
+      value={{ user, signup, login, logout, refreshUserDetails }}
     >
       {children}
     </AuthContext.Provider>

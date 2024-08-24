@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
+import axios from "axios";
 import CompanyDetails from "./CompanyDetails";
 import {
   List,
@@ -7,36 +8,25 @@ import {
   ListItemButton,
   Typography,
 } from "@mui/material";
+import { AuthContext } from "../../../context/AuthContext";
 
 const CompanyList = ({ user }) => {
+  const { refreshUserDetails } = useContext(AuthContext);
   const [companies, setCompanies] = useState([]);
   const [selectedCompany, setSelectedCompany] = useState(null);
 
+  const fetchCompanies = async () => {
+    try {
+      const response = await axios.get("http://localhost:5000/companies");
+      setCompanies(response.data);
+    } catch (error) {
+      console.error("Error fetching companies:", error);
+    }
+  };
+
   useEffect(() => {
-    // Simulate fetching companies from the backend
-    const fetchCompanies = () => {
-      return [
-        {
-          id: 1,
-          name: "Company A",
-          description: "Company A is a leading software development firm.",
-          roles: [
-            { id: 1, role: "Developer", jd: "JD for Developer" },
-            { id: 2, role: "QA Engineer", jd: "JD for QA Engineer" },
-          ],
-        },
-        {
-          id: 2,
-          name: "Company B",
-          description: "Company B specializes in IT support services.",
-          roles: [
-            { id: 3, role: "Support Engineer", jd: "JD for Support Engineer" },
-            { id: 4, role: "System Analyst", jd: "JD for System Analyst" },
-          ],
-        },
-      ];
-    };
-    setCompanies(fetchCompanies());
+    fetchCompanies();
+    refreshUserDetails();
   }, []);
 
   const handleCompanyClick = (company) => {
@@ -44,6 +34,8 @@ const CompanyList = ({ user }) => {
   };
 
   const handleBackToList = () => {
+    fetchCompanies();
+    refreshUserDetails();
     setSelectedCompany(null);
   };
 

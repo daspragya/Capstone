@@ -3,13 +3,11 @@ import StudentDetailsForm from "./StudentDetailsForm";
 import CompanyList from "./CompanyList";
 
 const StudentPage = ({ user }) => {
-  console.log(user.details);
-  const isEmptyDetails = Object.keys(user.details).length === 0;
-
+  const isEmptyDetails = user.details.legalName === "";
   const [detailsExist, setDetailsExist] = useState(!isEmptyDetails);
 
   useEffect(() => {
-    setDetailsExist(Object.keys(user.details).length > 0);
+    setDetailsExist(user.details.legalName !== "");
   }, [user.details]);
 
   return (

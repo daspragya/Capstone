@@ -1,10 +1,11 @@
 import React, { useState } from "react";
 import { Button, TextField } from "@mui/material";
+import axios from "axios";
 
 const ProfileUpdate = ({ user, setDetailsExist }) => {
   const [details, setDetails] = useState({
     companyName: "",
-    companyDescription: "",
+    companyDesc: "",
     companyWebsite: "",
   });
 
@@ -13,12 +14,15 @@ const ProfileUpdate = ({ user, setDetailsExist }) => {
     setDetails({ ...details, [name]: value });
   };
 
-  const handleSubmit = () => {
-    // Simulate saving details to the backend
+  const handleSubmit = async () => {
     user.details = {
-      ...user.details,
-      Roles: [],
+      ...details,
+      roles: [],
     };
+    await axios.post("http://localhost:5000/update-details", {
+      username: user.username,
+      details: user.details,
+    });
     setDetailsExist(true);
   };
 
@@ -35,8 +39,8 @@ const ProfileUpdate = ({ user, setDetailsExist }) => {
       />
       <TextField
         label="Company Description"
-        name="companyDescription"
-        value={details.companyDescription}
+        name="companyDesc"
+        value={details.companyDesc}
         onChange={handleInputChange}
         fullWidth
         margin="normal"

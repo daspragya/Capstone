@@ -88,12 +88,6 @@ const Dashboard = () => {
         </Toolbar>
       </AppBar>
       <Container>
-        {/* <Typography variant="h4" gutterBottom>
-          Welcome, {user.username}
-        </Typography>
-        <Typography variant="h6" gutterBottom>
-          Your role is: {user.role}
-        </Typography> */}
         {user.role === "student" && <StudentPage user={user} />}
         {user.role === "teacher" && <TeacherPage user={user} />}
         {user.role === "recruiter" && <RecruiterPage user={user} />}
