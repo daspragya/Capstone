@@ -1,36 +1,23 @@
 import React, { useState } from "react";
-import {
-  Box,
-  Button,
-  TextField,
-  Typography,
-  // CircularProgress,
-} from "@mui/material";
+import { Box, Button, TextField, Typography } from "@mui/material";
 
-const FetchCandidates = ({ candidates, handleFetch }) => {
+const FetchCandidates = ({ candidates, handleFetch, handleRefresh }) => {
   const [numCandidates, setNumCandidates] = useState(0);
+
   const handleFetchClick = () => {
     handleFetch(numCandidates);
   };
+
+  const handleRefreshClick = () => {
+    handleRefresh();
+  };
+
   return (
     <>
-      {/* {loading && (
-        <Box
-          display="flex"
-          justifyContent="center"
-          alignItems="center"
-          marginTop="20px"
-        >
-          <CircularProgress />
-          <Typography variant="body1" style={{ marginLeft: "10px" }}>
-            Fetching candidates, please wait...
-          </Typography>
-        </Box>
-      )} */}
       <Typography variant="h6">
         Deadline met. {candidates.length} candidates registered.
       </Typography>
-      <Box display="flex" marginTop="20px">
+      <Box display="flex" marginTop="20px" marginBottom="10px">
         <TextField
           label="Number of Candidates to Fetch"
           type="number"
@@ -39,9 +26,18 @@ const FetchCandidates = ({ candidates, handleFetch }) => {
           fullWidth
         />
       </Box>
-      <Button variant="contained" color="primary" onClick={handleFetchClick}>
-        Fetch {numCandidates} Candidates
-      </Button>
+      <Box display="flex" justifyContent="space-between">
+        <Button variant="contained" color="primary" onClick={handleFetchClick}>
+          Fetch {numCandidates} Candidates
+        </Button>
+        <Button
+          variant="outlined"
+          color="secondary"
+          onClick={handleRefreshClick}
+        >
+          Refresh Candidates Count
+        </Button>
+      </Box>
     </>
   );
 };

@@ -1,19 +1,31 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { DataGrid, GridToolbar } from "@mui/x-data-grid";
 import { Button, Typography } from "@mui/material";
+import axios from "axios";
 
 const CandidateDataGrid = ({
+  role,
   status,
-  fetchCandidateDetails,
   columns,
   setSelectedCandidates,
-  candidates,
   selectedCandidates,
   handleConductInterviews,
 }) => {
+  const [candidates, setCandidateDetails] = useState({});
+  const fetchCandidateDetails = async () => {
+    try {
+      const response = await axios.post(
+        "http://localhost:5000/fetch-candidates",
+        { role_id: role.role_id }
+      );
+      setCandidateDetails(response.data);
+    } catch (error) {
+      console.error("Failed to fetch candidates", error);
+    }
+  };
   useEffect(() => {
     fetchCandidateDetails();
-  }, []);
+  }, [role]);
   return (
     <>
       <div style={{ marginTop: "20px", height: 400, width: "100%" }}>

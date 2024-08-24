@@ -8,25 +8,24 @@ import {
   Button,
 } from "@mui/material";
 
-const ConfirmInterview = ({
+const ConfirmDialog = ({
   openDialog,
   setOpenDialog,
-  handleConfirmInterviews,
+  dialogTitle,
+  dialogContent,
+  handleSubmit,
 }) => {
   return (
     <Dialog open={openDialog} onClose={() => setOpenDialog(false)}>
-      <DialogTitle>{"Conduct AI-assisted Interviews?"}</DialogTitle>
+      <DialogTitle>{dialogTitle}</DialogTitle>
       <DialogContent>
-        <DialogContentText>
-          Conduct AI-assisted interviews for all the selected candidates? The
-          rest of them will be rejected from the process.
-        </DialogContentText>
+        <DialogContentText>{dialogContent}</DialogContentText>
       </DialogContent>
       <DialogActions>
         <Button onClick={() => setOpenDialog(false)} color="primary">
           Cancel
         </Button>
-        <Button onClick={handleConfirmInterviews} color="primary" autoFocus>
+        <Button onClick={handleSubmit} color="primary" autoFocus>
           Continue
         </Button>
       </DialogActions>
@@ -34,4 +33,4 @@ const ConfirmInterview = ({
   );
 };
 
-export default ConfirmInterview;
+export default ConfirmDialog;

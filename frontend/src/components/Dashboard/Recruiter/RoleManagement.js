@@ -1,18 +1,32 @@
-import React, { useState, useContext } from "react";
-import { Typography, Button } from "@mui/material";
+import React, { useState, useContext, useEffect, useRef } from "react";
+import {
+  Typography,
+  Button,
+  Dialog,
+  DialogContent,
+  DialogActions,
+  IconButton,
+  Box,
+} from "@mui/material";
 import { AuthContext } from "../../../context/AuthContext";
 import UploadJobDescription from "./UploadJobDescription";
 import FetchCandidates from "./FetchCandidates";
 import CandidateDataGrid from "./CandidateDataGrid";
-import ConfirmInterview from "./ConfirmInterview";
+import ConfirmDialog from "./ConfirmDialog";
 import axios from "axios";
+import { usePdf } from "@mikecousins/react-pdf";
+import ArrowBackIosNewIcon from "@mui/icons-material/ArrowBackIosNew";
+import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 
 const RoleManagement = ({ role, handleRoleUpdate }) => {
+  const [jdDialogOpen, setJdDialogOpen] = useState(false);
   const { user } = useContext(AuthContext);
   const [jdFile, setJdFile] = useState(null);
-  const [candidateDetails, setCandidateDetails] = useState({});
   const [loading, setLoading] = useState(false);
   const [openDialog, setOpenDialog] = useState(false);
+  const [dialogTitle, setDialogTitle] = useState("");
+  const [dialogContent, setDialogContent] = useState("");
+  const [handleSubmit, setHandleSubmit] = useState(() => () => {});
   const [selectedCandidates, setSelectedCandidates] = useState([]);
   const [columns, setColumns] = useState([
     { field: "legalName", headerName: "Name", width: 150 },
@@ -30,6 +44,41 @@ const RoleManagement = ({ role, handleRoleUpdate }) => {
     },
     { field: "score", headerName: "Score", width: 150 },
   ]);
+
+  const [page, setPage] = useState(1);
+  const canvasRef = useRef(null);
+  const [pdfFileUrl, setPdfFileUrl] = useState(null);
+  const { pdfDocument } = usePdf({
+    file: pdfFileUrl,
+    page,
+    canvasRef,
+  });
+
+  const handleViewJD = async () => {
+    setLoading(true);
+    try {
+      const response = await axios.get(
+        `http://localhost:5000/view-jd/${role.role_id}`,
+        {
+          responseType: "blob",
+        }
+      );
+      const fileURL = URL.createObjectURL(new Blob([response.data]));
+      setPdfFileUrl(fileURL);
+      setPage(1); // Reset to the first page
+      setJdDialogOpen(true);
+    } catch (error) {
+      console.error("Failed to fetch JD", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCloseJD = () => {
+    setJdDialogOpen(false);
+    setPdfFileUrl(null);
+    setPage(1);
+  };
 
   const handleJDUpload = async (file) => {
     setJdFile(file);
@@ -51,56 +100,50 @@ const RoleManagement = ({ role, handleRoleUpdate }) => {
   };
 
   const handleFetch = async (k) => {
-    try {
-      await axios.post("http://localhost:5000/match_resume", {
-        numCandidates: k,
-        username: user.username,
-        role_id: role.role_id,
-      });
-      handleRoleUpdate();
-    } catch (error) {
-      console.error("Failed to fetch required Candidates", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchCandidateDetails = async () => {
-    setLoading(true);
-    try {
-      const response = await axios.post(
-        "http://localhost:5000/fetch-candidates",
-        { role_id: role.role_id }
-      );
-      const updatedLabel =
-        role.status === 2 ? "Resume Match Percentage" : "Interview Score";
-      setCandidateDetails(response.data);
-      handleRoleUpdate();
-    } catch (error) {
-      console.error("Failed to fetch candidates", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleConductInterviews = () => {
+    setDialogTitle("Confirm Fetch");
+    setDialogContent(
+      `Are you sure you want to fetch ${k} candidates? The rest will be rejected.`
+    );
+    setHandleSubmit(() => async () => {
+      setOpenDialog(false);
+      setLoading(true);
+      try {
+        await axios.post("http://localhost:5000/match_resume", {
+          numCandidates: k,
+          username: user.username,
+          role_id: role.role_id,
+        });
+        handleRoleUpdate();
+      } catch (error) {
+        console.error("Failed to fetch required Candidates", error);
+      } finally {
+        setLoading(false);
+      }
+    });
     setOpenDialog(true);
   };
 
-  const handleConfirmInterviews = async () => {
-    setOpenDialog(false);
-    setLoading(true);
-    try {
-      await axios.post("http://localhost:5000/update-candidates-status", {
-        role_id: role.role_id,
-        selected_candidates: selectedCandidates,
-      });
-      handleRoleUpdate();
-    } catch (error) {
-      console.error("Failed to conduct interviews", error);
-    } finally {
-      setLoading(false);
-    }
+  const handleConductInterviews = () => {
+    setDialogTitle("Conduct AI-assisted Interviews?");
+    setDialogContent(
+      "Conduct AI-assisted interviews for all the selected candidates? The rest of them will be rejected from the process."
+    );
+    setHandleSubmit(() => async () => {
+      setOpenDialog(false);
+      setLoading(true);
+      try {
+        await axios.post("http://localhost:5000/update-candidates-status", {
+          role_id: role.role_id,
+          selected_candidates: selectedCandidates,
+        });
+        handleRoleUpdate();
+      } catch (error) {
+        console.error("Failed to conduct interviews", error);
+      } finally {
+        setLoading(false);
+      }
+    });
+    setOpenDialog(true);
   };
 
   const handleFinishInterviews = async () => {
@@ -133,6 +176,16 @@ const RoleManagement = ({ role, handleRoleUpdate }) => {
 
   return (
     <div>
+      {role.status > 0 && (
+        <Button
+          variant="outlined"
+          color="secondary"
+          onClick={handleViewJD}
+          style={{ float: "right", marginBottom: "20px" }}
+        >
+          View JD
+        </Button>
+      )}
       <h2>{role.roleTitle} role</h2>
       <h3>Description</h3>
       <Typography variant="body1" style={{ marginBottom: "20px" }}>
@@ -150,12 +203,12 @@ const RoleManagement = ({ role, handleRoleUpdate }) => {
         <FetchCandidates
           candidates={role.candidates}
           handleFetch={handleFetch}
+          handleRefresh={handleRoleUpdate}
         />
       )}
       {!loading && (role.status === 2 || role.status === 4) && (
         <CandidateDataGrid
-          fetchCandidateDetails={fetchCandidateDetails}
-          candidates={candidateDetails}
+          role={role}
           columns={columns}
           setSelectedCandidates={setSelectedCandidates}
           handleConductInterviews={handleConductInterviews}
@@ -168,11 +221,72 @@ const RoleManagement = ({ role, handleRoleUpdate }) => {
           Finish Interviews and Generate Scores
         </Button>
       )}
-      <ConfirmInterview
+      <ConfirmDialog
         openDialog={openDialog}
         setOpenDialog={setOpenDialog}
-        handleConfirmInterviews={handleConfirmInterviews}
+        dialogTitle={dialogTitle}
+        dialogContent={dialogContent}
+        handleSubmit={handleSubmit}
       />
+      <Dialog
+        open={jdDialogOpen}
+        onClose={handleCloseJD}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogContent>
+          <Box
+            position="relative"
+            border="1px solid #ccc"
+            borderRadius="8px"
+            overflow="hidden"
+            height="600px"
+            display="flex"
+            justifyContent="center"
+            alignItems="center"
+          >
+            <canvas
+              ref={canvasRef}
+              style={{ maxWidth: "100%", maxHeight: "100%" }}
+            />
+            {page > 1 && (
+              <IconButton
+                onClick={() => setPage(page - 1)}
+                style={{
+                  position: "absolute",
+                  left: "10px",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  backgroundColor: "rgba(0,0,0,0.5)",
+                  color: "white",
+                }}
+              >
+                <ArrowBackIosNewIcon />
+              </IconButton>
+            )}
+            {pdfDocument && page < pdfDocument.numPages && (
+              <IconButton
+                onClick={() => setPage(page + 1)}
+                style={{
+                  position: "absolute",
+                  right: "10px",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  backgroundColor: "rgba(0,0,0,0.5)",
+                  color: "white",
+                }}
+              >
+                <ArrowForwardIosIcon />
+              </IconButton>
+            )}
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseJD} color="primary">
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
     </div>
   );
 };

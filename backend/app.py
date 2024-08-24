@@ -1,288 +1,41 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 import os
 import random
+from pymongo import MongoClient
+from bson.objectid import ObjectId
 
 app = Flask(__name__)
 CORS(app)
 
 # Folder to save uploaded JD files
-UPLOAD_FOLDER = 'uploads'
-if not os.path.exists(UPLOAD_FOLDER):
-    os.makedirs(UPLOAD_FOLDER)
+RESUME_FOLDER = 'resume'
+JD_FOLDER = 'jd'
 
-# In-memory "databases" (dictionaries)
-users_db = {}
-students_db = {}
-recruiters_db = {}
-roles_db = {}
+# Create folders if they don't exist
+if not os.path.exists(RESUME_FOLDER):
+    os.makedirs(RESUME_FOLDER)
+if not os.path.exists(JD_FOLDER):
+    os.makedirs(JD_FOLDER)
 
-# Sample Data
+# MongoDB Connection
+client = MongoClient("mongodb+srv://pragyadas:Test123@capstone.3sv7a.mongodb.net/")  # Replace with your MongoDB connection string
+db = client["capstone_project_db"]  # Database name
+users_col = db["users"]  # Users collection
+students_col = db["students"]  # Students collection
+recruiters_col = db["recruiters"]  # Recruiters collection
+roles_col = db["roles"]  # Roles collection
 
-# Students Collection
-students_db = {
-    1: {
-        "legalName": "John Doe",
-        "gpa": 3.8,
-        "gender": "Male",
-        "resume": "link-to-john-resume.pdf",
-        "application_status": [
-            {"role_id": 1, "status": 0, "score": None}
-        ]
-    },
-    2: {
-        "legalName": "Jane Smith",
-        "gpa": 3.6,
-        "gender": "Female",
-        "resume": "link-to-jane-resume.pdf",
-        "application_status": [
-            {"role_id": 1, "status": 0, "score": None}
-        ]
-    },
-    3: {
-        "legalName": "Alice Johnson",
-        "gpa": 3.9,
-        "gender": "Female",
-        "resume": "link-to-alice-resume.pdf",
-        "application_status": [
-            {"role_id": 1, "status": 0, "score": None}
-        ]
-    },
-    4: {
-        "legalName": "Bob Brown",
-        "gpa": 3.7,
-        "gender": "Male",
-        "resume": "link-to-bob-resume.pdf",
-        "application_status": [
-            {"role_id": 1, "status": 0, "score": None}
-        ]
-    },
-    5: {
-        "legalName": "Charlie Davis",
-        "gpa": 3.5,
-        "gender": "Male",
-        "resume": "link-to-charlie-resume.pdf",
-        "application_status": [
-            {"role_id": 1, "status": 0, "score": None}
-        ]
-    },
-    6: {
-        "legalName": "Diana Evans",
-        "gpa": 3.9,
-        "gender": "Female",
-        "resume": "link-to-diana-resume.pdf",
-        "application_status": [
-            {"role_id": 1, "status": 0, "score": None}
-        ]
-    },
-    7: {
-        "legalName": "Edward Fisher",
-        "gpa": 3.4,
-        "gender": "Male",
-        "resume": "link-to-edward-resume.pdf",
-        "application_status": [
-            {"role_id": 1, "status": 0, "score": None}
-        ]
-    },
-    8: {
-        "legalName": "Fiona Green",
-        "gpa": 3.6,
-        "gender": "Female",
-        "resume": "link-to-fiona-resume.pdf",
-        "application_status": [
-            {"role_id": 1, "status": 0, "score": None}
-        ]
-    },
-    9: {
-        "legalName": "George Harris",
-        "gpa": 3.8,
-        "gender": "Male",
-        "resume": "link-to-george-resume.pdf",
-        "application_status": [
-            {"role_id": 1, "status": 0, "score": None}
-        ]
-    },
-    10: {
-        "legalName": "Hannah Ivanov",
-        "gpa": 4.0,
-        "gender": "Female",
-        "resume": "link-to-hannah-resume.pdf",
-        "application_status": [
-            {"role_id": 1, "status": 0, "score": None}
-        ]
-    },
-    11: {
-        "legalName": "Ian Jackson",
-        "gpa": 3.5,
-        "gender": "Male",
-        "resume": "link-to-ian-resume.pdf",
-        "application_status": [
-            {"role_id": 1, "status": 0, "score": None}
-        ]
-    },
-    12: {
-        "legalName": "Julia King",
-        "gpa": 3.7,
-        "gender": "Female",
-        "resume": "link-to-julia-resume.pdf",
-        "application_status": [
-            {"role_id": 1, "status": 0, "score": None}
-        ]
-    },
-    13: {
-        "legalName": "Kevin Lewis",
-        "gpa": 3.6,
-        "gender": "Male",
-        "resume": "link-to-kevin-resume.pdf",
-        "application_status": [
-            {"role_id": 1, "status": 0, "score": None}
-        ]
-    }
-}
-
-# Recruiters Collection
-recruiters_db = {
-    1: {
-        "companyName": "Tech Corp",
-        "companyDesc": "A leading tech company",
-        "companyWebsite": "www.tech.com",
-        "roles": [
-            {"role_id": 1, "status": 1},
-            {"role_id": 2, "status": 1}
-        ]
-    },
-    2: {
-        "companyName": "Innovate Solutions",
-        "companyDesc": "A top-tier consulting firm",
-        "companyWebsite": "www.link.com",
-        "roles": [
-            {"role_id": 3, "status": 1},
-            {"role_id": 4, "status": 1}
-        ]
-    }
-}
-
-# Roles Collection
-roles_db = {
-    1: {
-        "company_id": 1,
-        "roleTitle": "Software Developer",
-        "roleDescription": "Responsible for developing software solutions.",
-        "jd": "link-to-software-developer-jd.pdf",
-        "candidates": [1, 2],
-        "deadline": "2024-12-31",
-        "status": 1
-    },
-    2: {
-        "company_id": 1,
-        "roleTitle": "Data Analyst",
-        "roleDescription": "Analyze data and provide actionable insights.",
-        "jd": "link-to-data-analyst-jd.pdf",
-        "candidates": [3, 4],
-        "deadline": "2024-12-31",
-        "status": 1
-    },
-    3: {
-        "company_id": 2,
-        "roleTitle": "Consultant",
-        "roleDescription": "Provide strategic consulting services to clients.",
-        "jd": "link-to-consultant-jd.pdf",
-        "candidates": [5, 6],
-        "deadline": "2024-12-31",
-        "status": 1
-    },
-    4: {
-        "company_id": 2,
-        "roleTitle": "Project Manager",
-        "roleDescription": "Manage projects and ensure timely delivery.",
-        "jd": "link-to-project-manager-jd.pdf",
-        "candidates": [7, 8],
-        "deadline": "2024-12-31",
-        "status": 1
-    }
-}
-
-# Users Collection
-users_db = {
-    # Students
-    "johndoe": {
-        "password": "johndoe",
-        "role": "student",
-        "details_id": 1  # References students_db
-    },
-    "janesmith": {
-        "password": "janesmith",
-        "role": "student",
-        "details_id": 2  # References students_db
-    },
-    "alicejohnson": {
-        "password": "alicejohnson",
-        "role": "student",
-        "details_id": 3  # References students_db
-    },
-    "bobbrown": {
-        "password": "bobbrown",
-        "role": "student",
-        "details_id": 4  # References students_db
-    },
-    "charliedavis": {
-        "password": "charliedavis",
-        "role": "student",
-        "details_id": 5  # References students_db
-    },
-    "dianaevans": {
-        "password": "dianaevans",
-        "role": "student",
-        "details_id": 6  # References students_db
-    },
-    "edwardfisher": {
-        "password": "edwardfisher",
-        "role": "student",
-        "details_id": 7  # References students_db
-    },
-    "fionagreen": {
-        "password": "fionagreen",
-        "role": "student",
-        "details_id": 8  # References students_db
-    },
-    "georgeharris": {
-        "password": "georgeharris",
-        "role": "student",
-        "details_id": 9  # References students_db
-    },
-    "hannahivanov": {
-        "password": "hannahivanov",
-        "role": "student",
-        "details_id": 10  # References students_db
-    },
-    "ianjackson": {
-        "password": "ianjackson",
-        "role": "student",
-        "details_id": 11  # References students_db
-    },
-    "juliaking": {
-        "password": "juliaking",
-        "role": "student",
-        "details_id": 12  # References students_db
-    },
-    "kevinlewis": {
-        "password": "kevinlewis",
-        "role": "student",
-        "details_id": 13  # References students_db
-    },
-
-    # Recruiters
-    "janerecruiter": {
-        "password": "janerecruiter",
-        "role": "recruiter",
-        "details_id": 1  # References recruiters_db
-    },
-    "markmanager": {
-        "password": "markmanager",
-        "role": "recruiter",
-        "details_id": 2  # References recruiters_db
-    }
-}
+def convert_objectid_to_str(doc):
+    """Recursively converts ObjectId fields in a document to strings."""
+    if isinstance(doc, list):
+        return [convert_objectid_to_str(i) for i in doc]
+    elif isinstance(doc, dict):
+        return {k: convert_objectid_to_str(v) for k, v in doc.items()}
+    elif isinstance(doc, ObjectId):
+        return str(doc)
+    else:
+        return doc
 
 
 @app.route('/')
@@ -307,36 +60,34 @@ def signup():
     password = data['password']
     role = data['role']
 
-    if username in users_db:
+    if users_col.find_one({"username": username}):
         return jsonify({'message': 'User already exists'}), 400
 
-    # Create a new entry in the relevant database based on role
+    # Create a new entry in the relevant collection based on role
     if role == "student":
-        new_id = max(students_db.keys()) + 1 if students_db else 1
-        students_db[new_id] = {
+        student_id = students_col.insert_one({
             "legalName": "",
             "gpa": 0,
             "gender": "",
             "resume": "",
-            
             "application_status": []
-        }
+        }).inserted_id
     elif role == "recruiter":
-        new_id = max(recruiters_db.keys()) + 1 if recruiters_db else 1
-        recruiters_db[new_id] = {
+        recruiter_id = recruiters_col.insert_one({
             "companyName": "",
             "companyDesc": "",
             "roles": []
-        }
+        }).inserted_id
     else:
         return jsonify({'message': 'Invalid role specified'}), 400
 
-    # Add the user to the users_db
-    users_db[username] = {
+    # Add the user to the users collection
+    users_col.insert_one({
+        "username": username,
         "password": password,
         "role": role,
-        "details_id": new_id
-    }
+        "details_id": student_id if role == "student" else recruiter_id
+    })
     return jsonify({'message': 'User registered successfully'}), 201
 
 @app.route('/login', methods=['POST'])
@@ -345,109 +96,144 @@ def login():
     username = data['username']
     password = data['password']
 
-    if username not in users_db or users_db[username]['password'] != password:
+    user = users_col.find_one({"username": username, "password": password})
+    if not user:
         return jsonify({'message': 'Invalid credentials'}), 401
 
-    role = users_db[username]['role']
-    details_id = users_db[username]['details_id']
-    details = students_db[details_id] if role == "student" else recruiters_db[details_id]
+    role = user['role']
+    details_id = user['details_id']
+    details = students_col.find_one({"_id": details_id}) if role == "student" else recruiters_col.find_one({"_id": details_id})
 
     return jsonify({
         'message': 'Login successful',
         'role': role,
         'username': username,
-        'details': details
+        'details': convert_objectid_to_str(details)
     }), 200
 
 @app.route('/refresh-user-details', methods=['GET'])
 def refresh_user_details():
     username = request.args.get('username')
 
-    if not username or username not in users_db:
+    if not username:
+        return jsonify({'message': 'Username is required'}), 400
+
+    user = users_col.find_one({"username": username})
+    if not user:
         return jsonify({'message': 'User not found'}), 404
 
-    role = users_db[username]['role']
-    details_id = users_db[username]['details_id']
+    role = user['role']
+    details_id = user['details_id']
 
     # Fetch the latest user details based on the role
-    details = students_db[details_id] if role == "student" else recruiters_db[details_id]
+    if role == "student":
+        details = students_col.find_one({"_id": ObjectId(details_id)})
+    elif role == "recruiter":
+        details = recruiters_col.find_one({"_id": ObjectId(details_id)})
+    else:
+        return jsonify({'message': 'Invalid role specified'}), 400
 
     return jsonify({
         'message': 'User details refreshed successfully',
         'role': role,
         'username': username,
-        'details': details
-    }), 200
+        'details': convert_objectid_to_str(details)
 
+    }), 200
 
 @app.route('/update-details', methods=['POST'])
 def update_details():
-    data = request.json
-    username = data['username']
+    username = request.form['username']
+    
+    # Fetch the file from the request
+    resume_file = request.files.get('resume')
 
-    if username not in users_db:
+    user = users_col.find_one({"username": username})
+    if not user:
         return jsonify({'message': 'User not found'}), 404
 
-    details_id = users_db[username]['details_id']
-    role = users_db[username]['role']
+    details_id = user['details_id']
+    role = user['role']
+    
+    # Prepare the details dictionary for updating the database
+    details = {
+        "legalName": request.form.get('legalName'),
+        "gender": request.form.get('gender'),
+        "gpa": request.form.get('gpa'),
+    }
+    
+    # Handle file saving if a resume file was uploaded
+    if resume_file:
+        # Define the filename and file path
+        filename = f"{username}.pdf"
+        file_path = os.path.join(RESUME_FOLDER, filename)
+        
+        # Save the resume file to the server
+        resume_file.save(file_path)
+        
+        # Add the file path to the details dictionary
+        details['resume'] = file_path
 
     # Update the correct collection based on user role
     if role == "student":
-        students_db[details_id].update(data['details'])
+        students_col.update_one({"_id": ObjectId(details_id)}, {"$set": details})
     elif role == "recruiter":
-        recruiters_db[details_id].update(data['details'])
+        recruiters_col.update_one({"_id": ObjectId(details_id)}, {"$set": details})
     else:
         return jsonify({'message': 'Invalid role specified'}), 400
 
     return jsonify({'message': 'User details updated successfully'}), 200
 
+
 @app.route('/companies', methods=['GET'])
 def get_companies():
     response = []
-    for rec_id, rec in recruiters_db.items():
-        # Filter roles where status != 0 and include role_id in the response
-        visible_roles = [
-            {
-                "role_id": role_id,
+    recruiters = recruiters_col.find()
+    for rec in recruiters:
+        visible_roles = []
+        for role in roles_col.find({"company_id": rec["_id"], "status": {"$ne": 0}}):
+            visible_roles.append({
+                "role_id": str(role["_id"]),  # Convert ObjectId to string
                 "roleTitle": role['roleTitle'],
                 "roleDescription": role['roleDescription'],
                 "jd": role['jd'],
                 "deadline": role['deadline']
-            }
-            for role_id, role in roles_db.items()
-            if role['company_id'] == rec_id and role['status'] != 0
-        ]
-        if visible_roles:  # Only include companies with visible roles
+            })
+        if visible_roles:
             response.append({
-                'id': rec_id,
+                'id': str(rec["_id"]),  # Convert ObjectId to string
                 'name': rec['companyName'],
                 'description': rec['companyDesc'],
                 'roles': visible_roles
             })
     return jsonify(response), 200
 
-
 @app.route('/apply-role', methods=['POST'])
 def apply_role():
     data = request.json
     username = data['username']
-    role_id = data['role_id']
+    role_id = ObjectId(data['role_id'])
 
-    if username not in users_db or users_db[username]['role'] != "student":
+    user = users_col.find_one({"username": username, "role": "student"})
+    if not user:
         return jsonify({'message': 'User not found or not a student'}), 404
 
-    details_id = users_db[username]['details_id']
-    student = students_db[details_id]
+    details_id = user['details_id']
     score = random.randint(50, 100)
-    # Update the student's application status
-    student['application_status'].append({
-        "role_id": role_id,
-        "status": 1,  # Assuming 0 means "applied"
-        "score": score
+
+    students_col.update_one({"_id": details_id}, {
+        "$push": {
+            "application_status": {
+                "role_id": role_id,
+                "status": 1,
+                "score": score
+            }
+        }
     })
 
-    # Update the role's candidate list
-    roles_db[role_id]['candidates'].append(details_id)
+    roles_col.update_one({"_id": role_id}, {
+        "$push": {"candidates": ObjectId(details_id)}
+    })
 
     return jsonify({'message': 'Application successful'}), 200
 
@@ -457,14 +243,13 @@ def add_role():
     username = data['username']
     role_data = data['role']
 
-    if username not in users_db or users_db[username]['role'] != 'recruiter':
+    user = users_col.find_one({"username": username, "role": "recruiter"})
+    if not user:
         return jsonify({'message': 'Recruiter not found'}), 404
 
-    details_id = users_db[username]['details_id']
-    new_role_id = max(roles_db.keys()) + 1 if roles_db else 1
-
+    details_id = user['details_id']
     new_role = {
-        'company_id': details_id,
+        'company_id': ObjectId(details_id),
         'roleTitle': role_data['RoleTitle'],
         'roleDescription': role_data['RoleDescription'],
         'jd': None,
@@ -473,14 +258,18 @@ def add_role():
         'status': 0  # Status 0 since no JD is uploaded yet
     }
 
-    # Add the new role to the roles_db
-    roles_db[new_role_id] = new_role
+    # Insert the new role into the roles collection
+    new_role_id = roles_col.insert_one(new_role).inserted_id
 
-    # Also add the new role to the recruiter's roles in recruiters_db
-    recruiters_db[details_id]['roles'].append({
-        "role_id": new_role_id,
-        "status": 0  # Status 0 since no JD is uploaded yet
-    })
+    # Update the recruiter's roles with the new role
+    recruiters_col.update_one(
+        {"_id": ObjectId(details_id)},
+        {"$push": {"roles": {"role_id": new_role_id, "status": 0}}}
+    )
+
+    # Convert the ObjectId to string before returning the role
+    new_role['_id'] = str(new_role_id)
+    new_role['company_id'] = str(new_role['company_id'])
 
     return jsonify({'message': 'Role added successfully', 'role': new_role}), 201
 
@@ -489,173 +278,187 @@ def get_roles():
     username = request.args.get('username')
     if not username:
         return jsonify({"message": "Username is required"}), 400
-    if username not in users_db:
+    user = users_col.find_one({"username": username})
+    if not user:
         return jsonify({"message": "User not found"}), 404
-    user = users_db[username]
     if user['role'] != 'recruiter':
         return jsonify({"message": "User is not a recruiter"}), 403
     details_id = user['details_id']
-    recruiter = recruiters_db.get(details_id)
+    recruiter = recruiters_col.find_one({"_id": ObjectId(details_id)})
     if not recruiter:
         return jsonify({"message": "Recruiter details not found"}), 404
-    role_ids = [role['role_id'] for role in recruiter['roles']]
-    roles = [
-        {
-            "role_id": role_id,
-            "roleTitle": roles_db[role_id]["roleTitle"],
-            "roleDescription": roles_db[role_id]["roleDescription"],
-            "jd": roles_db[role_id]["jd"],
-            "candidates": roles_db[role_id]["candidates"],
-            "deadline": roles_db[role_id]["deadline"],
-            "status": roles_db[role_id]["status"]
-        }
-        for role_id in role_ids if role_id in roles_db
-    ]
+    
+    roles = []
+    for role_info in recruiter['roles']:
+        role_id = role_info['role_id']
+        role = roles_col.find_one({"_id": ObjectId(role_id)})
+        if role:
+            roles.append({
+                "role_id": str(role["_id"]),  # Convert ObjectId to string
+                "roleTitle": role["roleTitle"],
+                "roleDescription": role["roleDescription"],
+                "jd": role["jd"],
+                "candidates": [str(candidate_id) for candidate_id in role["candidates"]],  # Convert candidate ObjectIds to strings
+                "deadline": role["deadline"],
+                "status": role["status"]
+            })
+    
     return jsonify({"roles": roles}), 200
 
 @app.route('/upload-jd', methods=['POST'])
 def upload_jd():
     username = request.form['username']
-    role_id = int(request.form['role_id'])
+    role_id = request.form['role_id']
     jd_file = request.files['jd']
 
-    if username not in users_db or users_db[username]['role'] != 'recruiter':
+    user = users_col.find_one({"username": username, "role": "recruiter"})
+    if not user:
         return jsonify({'message': 'Recruiter not found'}), 404
 
-    # Fetch role details from roles_db
-    role = roles_db.get(role_id)
+    role = roles_col.find_one({"_id": ObjectId(role_id)})
     if not role:
         return jsonify({'message': 'Role not found'}), 404
 
     # Save the JD file to the server
     role_name = role['roleTitle']
     filename = f"{username}_{role_name}.pdf"
-    file_path = os.path.join(UPLOAD_FOLDER, filename)
+    file_path = os.path.join(JD_FOLDER, filename)
+
+    #CONVERT AND ADD TO MONGODB
+    
     jd_file.save(file_path)
 
     # Update the role with the JD file and change status
-    roles_db[role_id]['jd'] = file_path
-    roles_db[role_id]['status'] = 1  # Status 1 means JD uploaded
+    roles_col.update_one(
+        {"_id": ObjectId(role_id)},
+        {"$set": {"jd": file_path, "status": 1}}
+    )
 
-    # Randomly select a number of candidates
-    num_candidates = random.randint(7, 13)  # Pick a number greater than 7
-    candidate_ids = random.sample(list(students_db.keys()), num_candidates)
-    roles_db[role_id]['candidates'] = candidate_ids
+    updated_role = roles_col.find_one({"_id": ObjectId(role_id)})
+    updated_role['_id'] = str(updated_role['_id'])
+    updated_role['company_id'] = str(updated_role['company_id'])
+    return jsonify({'message': 'JD uploaded and candidates selected', 'role': updated_role}), 200
 
-    # Update students' application status
-    for cid in candidate_ids:
-        students_db[cid]['application_status'].append({
-            "role_id": role_id,
-            "status": 1,  # Status 1 means applied
-            "score": None
-        })
+@app.route('/view-jd/<role_id>', methods=['GET'])
+def view_jd(role_id):
+    try:
+        # Find the role in the database using the role_id
+        role = roles_col.find_one({"_id": ObjectId(role_id)})
+        if not role or not role.get("jd"):
+            return jsonify({"message": "JD file not found"}), 404
 
-    return jsonify({'message': 'JD uploaded and candidates selected', 'role': roles_db[role_id]}), 200
+        # Get the file path from the role document
+        file_path = role["jd"]
+        if not os.path.exists(file_path):
+            return jsonify({"message": "JD file does not exist on the server"}), 404
+
+        # Serve the JD file
+        return send_file(file_path, as_attachment=False)
+
+    except Exception as e:
+        return jsonify({"message": f"Error fetching JD: {str(e)}"}), 500
 
 @app.route('/match_resume', methods=['POST'])
 def match_resume():
     username = request.json['username']
     k = int(request.json['numCandidates'])
-    role_id = int(request.json['role_id'])
-    role = roles_db.get(role_id)
-    role_name = role['roleTitle']
-    jd = f"{username}_{role_name}.pdf"
+    role_id = request.json['role_id']
+    role = roles_col.find_one({"_id": ObjectId(role_id)})
+
     available_candidates = role['candidates']
     if k > len(available_candidates):
         k = len(available_candidates)
-    if(k==len(available_candidates)):
-        roles_db[role_id]['status'] = 2
+
+    if k == len(available_candidates):
+        roles_col.update_one(
+            {"_id": ObjectId(role_id)},
+            {"$set": {"status": 2}}
+        )
         for cid in available_candidates:
             score = random.randint(50, 100)
-            students_db[cid]['application_status'] = [
-                {
-                    "role_id": role_id,
-                    "status": 2,
-                    "score": score
-                }
-                for app in students_db[cid]['application_status']
-                if app['role_id'] == role_id
-            ]
-        return jsonify({"message": "Candidates updated after matching resume" }), 200
+            students_col.update_one(
+                {"_id": ObjectId(cid), "application_status.role_id": ObjectId(role_id)},
+                {"$set": {"application_status.$.status": 2, "application_status.$.score": score}}
+            )
+        return jsonify({"message": "Candidates updated after matching resume"}), 200
+
     selected_candidates = random.sample(available_candidates, k)
-    roles_db[role_id]['candidates'] = selected_candidates
-    roles_db[role_id]['status'] = 2
+    roles_col.update_one(
+        {"_id": ObjectId(role_id)},
+        {"$set": {"candidates": selected_candidates, "status": 2}}
+    )
+
     for cid in selected_candidates:
         score = random.randint(50, 100)
-        students_db[cid]['application_status'] = [
-            {
-                "role_id": role_id,
-                "status": 2,
-                "score": score
-            }
-            for app in students_db[cid]['application_status']
-            if app['role_id'] == role_id
-        ]
+        students_col.update_one(
+            {"_id": ObjectId(cid), "application_status.role_id": ObjectId(role_id)},
+            {"$set": {"application_status.$.status": 2, "application_status.$.score": score}}
+        )
 
     # Update the status of the non-selected candidates to 5 (Rejected)
     non_selected_candidates = set(available_candidates) - set(selected_candidates)
     for cid in non_selected_candidates:
-        for app in students_db[cid]['application_status']:
-            if app['role_id'] == role_id:
-                app['status'] = 5
-                break
+        students_col.update_one(
+            {"_id": ObjectId(cid), "application_status.role_id": ObjectId(role_id)},
+            {"$set": {"application_status.$.status": 5}}
+        )
+
     return jsonify({"message": "Candidates updated after matching resume"}), 200
 
+from bson import ObjectId
 
 @app.route('/fetch-candidates', methods=['POST'])
 def fetch_candidates():
-    role_id = int(request.json['role_id'])
-    role = roles_db.get(role_id)
+    role_id = request.json['role_id']  # Expecting role_id to be a string
+    role = roles_col.find_one({"_id": ObjectId(role_id)})
+    
+    if not role or 'candidates' not in role:
+        return jsonify({"message": "Role not found or no candidates found"}), 400
+
     candidate_ids = role['candidates']
 
-    if not candidate_ids:
-        return jsonify({"message": "No candidate IDs provided"}), 400
-
-    # Extract the required fields for each candidate and include interview score if status is 4
     candidates = []
     for cid in candidate_ids:
-        if cid in students_db:
-            candidate_data = {
-                "id": cid,
-                "legalName": students_db[cid]["legalName"],
-                "gender": students_db[cid]["gender"],
-                "gpa": students_db[cid]["gpa"],
-                "resume": students_db[cid]["resume"],
-                "score": None
-            }
-            # Check the application status for the role and include the interview score if status is 4
-            for app in students_db[cid]['application_status']:
-                if app['role_id'] == role_id:
-                    candidate_data['score'] = app['score']
+        candidate = students_col.find_one({"_id": ObjectId(cid)})
+        if candidate:
+            for app in candidate['application_status']:
+                if app['role_id'] == ObjectId(role_id):
+                    candidate_data = {
+                        "id": str(cid),
+                        "legalName": candidate["legalName"],
+                        "gender": candidate["gender"],
+                        "gpa": candidate["gpa"],
+                        "resume": candidate["resume"],
+                        "score": app['score']
+                    }
+                    candidates.append(candidate_data)
                     break
-            candidates.append(candidate_data)
-
     return jsonify(candidates), 200
-
 
 
 @app.route('/update-candidates-status', methods=['POST'])
 def update_candidates_status():
     role_id = request.json.get('role_id')
-    selected_candidates = request.json.get('selected_candidates', [])
-    if role_id not in roles_db:
-        return jsonify({"message": "Role not found"}), 404
-    role = roles_db[role_id]
+    selected_candidates = [ObjectId(cid) for cid in request.json.get('selected_candidates', [])]
+    role = roles_col.find_one({"_id": ObjectId(role_id)})
     available_candidates = role['candidates']
-    roles_db[role_id]['candidates'] = selected_candidates
-    roles_db[role_id]['status'] = 3
+    roles_col.update_one(
+        {"_id": ObjectId(role_id)},
+        {"$set": {"candidates": selected_candidates, "status": 3}}
+    )
     for cid in selected_candidates:
-        for app in students_db[cid]['application_status']:
-            if app['role_id'] == role_id:
-                students_db[cid]['application_status']["status"] = 3
-
+        students_col.update_one(
+            {"_id": ObjectId(cid), "application_status.role_id": ObjectId(role_id)},
+            {"$set": {"application_status.$.status": 3}}
+        )
     # Update the status of the non-selected candidates to 5 (Rejected)
     non_selected_candidates = set(available_candidates) - set(selected_candidates)
     for cid in non_selected_candidates:
-        for app in students_db[cid]['application_status']:
-            if app['role_id'] == role_id:
-                students_db[cid]['application_status']["status"] = 5
-
+        students_col.update_one(
+            {"_id": ObjectId(cid), "application_status.role_id": ObjectId(role_id)},
+            {"$set": {"application_status.$.status": 5}}
+        )
+    print(available_candidates,selected_candidates, non_selected_candidates)
     return jsonify({'message': 'Candidates status updated successfully'}), 200
 
 @app.route('/complete-interviews', methods=['POST'])
@@ -663,22 +466,17 @@ def complete_interviews():
     role_id = request.json.get('role_id')
     username = request.json.get('username')
 
-    if role_id not in roles_db:
-        return jsonify({"message": "Role not found"}), 404
-    
-    if username not in users_db or users_db[username]['role'] != "student":
+    user = users_col.find_one({"username": username, "role": "student"})
+    if not user:
         return jsonify({'message': 'User not found or not a student'}), 404
 
-    details_id = users_db[username]['details_id']
-    student = students_db[details_id]
+    details_id = user['details_id']
     score = random.randint(50, 100)
 
-    # Update the student's application status
-    for app in student['application_status']:
-        if app['role_id'] == role_id and app['status']==3:
-            app['status'] = 4
-            app['score'] = score
-            break
+    students_col.update_one(
+        {"_id": ObjectId(details_id), "application_status.role_id": ObjectId(role_id), "application_status.status": 3},
+        {"$set": {"application_status.$.status": 4, "application_status.$.score": score}}
+    )
 
     return jsonify({'message': 'Interview completed and score assigned'}), 200
 
@@ -686,20 +484,21 @@ def complete_interviews():
 def finish_interviews():
     role_id = request.json.get('role_id')
 
-    if role_id not in roles_db:
-        return jsonify({"message": "Role not found"}), 404
-
-    role = roles_db[role_id]
+    role = roles_col.find_one({"_id": ObjectId(role_id)})
     candidate_ids = role['candidates']
     for cid in candidate_ids:
-        for app in students_db[cid]['application_status']:
-            if app['role_id'] == role_id and app['status'] == 3:  # Only update those in interview stage
-                score = random.randint(50, 100)  # Generate random score as percentage
-                app['score'] = score
-                app['status'] = 4
-                break
-    roles_db[role_id]['status'] = 4
+        students_col.update_one(
+            {"_id": ObjectId(cid), "application_status.role_id": ObjectId(role_id), "application_status.status": 3},
+            {"$set": {"application_status.$.status": 4, "application_status.$.score": random.randint(50, 100)}}
+        )
+
+    roles_col.update_one(
+        {"_id": ObjectId(role_id)},
+        {"$set": {"status": 4}}
+    )
+
     return jsonify({'message': 'Interviews completed and scores assigned'}), 200
+
 
 if __name__ == '__main__':
     app.run(debug=True)
