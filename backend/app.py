@@ -4,6 +4,7 @@ import os
 import random
 from pymongo import MongoClient
 from bson.objectid import ObjectId
+import requests
 
 app = Flask(__name__)
 CORS(app)
@@ -143,11 +144,13 @@ def refresh_user_details():
 
 @app.route('/update-details', methods=['POST'])
 def update_details():
-    username = request.form['username']
+    # First, try to retrieve the username from the JSON payload
+    try:
+        username = request.json['username']
+    except:
+        username = request.form.get('username')
     
-    # Fetch the file from the request
-    resume_file = request.files.get('resume')
-
+    # Fetch the user from the database
     user = users_col.find_one({"username": username})
     if not user:
         return jsonify({'message': 'User not found'}), 404
@@ -155,35 +158,69 @@ def update_details():
     details_id = user['details_id']
     role = user['role']
     
-    # Prepare the details dictionary for updating the database
-    details = {
-        "legalName": request.form.get('legalName'),
-        "gender": request.form.get('gender'),
-        "gpa": request.form.get('gpa'),
-    }
-    
-    # Handle file saving if a resume file was uploaded
-    if resume_file:
-        # Define the filename and file path
-        filename = f"{username}.pdf"
-        file_path = os.path.join(RESUME_FOLDER, filename)
-        
-        # Save the resume file to the server
-        resume_file.save(file_path)
-        
-        # Add the file path to the details dictionary
-        details['resume'] = file_path
+    # Initialize the details dictionary
+    details = {}
+
+    if role == 'student':
+        # For students, handle form data and file upload
+        try:
+            resume_file = request.files.get('resume')
+            details.update({
+                "legalName": request.form.get('legalName'),
+                "gender": request.form.get('gender'),
+                "gpa": request.form.get('gpa'),
+            })
+
+            if resume_file:
+                # Define the filename and file path
+                filename = f"{username}.pdf"
+                file_path = os.path.join(RESUME_FOLDER, filename)
+                
+                # Save the resume file to the server
+                resume_file.save(file_path)
+                
+                # Add the file path to the details dictionary
+                details['resume'] = file_path
+                resume_file.stream.seek(0)
+
+                # Send the resume for analysis
+                analysis_endpoint = "http://127.0.0.1:7000/candidate/analyse"
+                files = {"file": (resume_file.filename, resume_file.stream, resume_file.mimetype)}
+                try:
+                    response = requests.post(analysis_endpoint, files=files)
+                    response.raise_for_status()  # Raise an error for bad status codes
+                    
+                    # Get the content of the response
+                    response_content = response.json()
+                    
+                    # Update the details with analysis results
+                    details["resume_extract"] = response_content
+                except requests.exceptions.RequestException as e:
+                    print(f"Error communicating with analysis service: {e}")
+                    return jsonify({'message': 'Failed to analyze resume', 'error': str(e)}), 500
+        except KeyError as e:
+            return jsonify({'message': f'Missing required data: {str(e)}'}), 400
+
+    elif role == "recruiter":
+        # For recruiters, handle the JSON payload
+        try:
+            details.update({
+                "companyName": request.json['details']['companyName'],
+                "companyDesc": request.json['details']['companyDesc'],
+                "companyWebsite": request.json['details']['companyWebsite'],
+            })
+        except KeyError as e:
+            return jsonify({'message': f'Missing required data: {str(e)}'}), 400
+    else:
+        return jsonify({'message': 'Invalid role specified'}), 400
 
     # Update the correct collection based on user role
     if role == "student":
         students_col.update_one({"_id": ObjectId(details_id)}, {"$set": details})
     elif role == "recruiter":
         recruiters_col.update_one({"_id": ObjectId(details_id)}, {"$set": details})
-    else:
-        return jsonify({'message': 'Invalid role specified'}), 400
 
     return jsonify({'message': 'User details updated successfully'}), 200
-
 
 @app.route('/companies', methods=['GET'])
 def get_companies():
@@ -219,23 +256,57 @@ def apply_role():
         return jsonify({'message': 'User not found or not a student'}), 404
 
     details_id = user['details_id']
-    score = random.randint(50, 100)
 
-    students_col.update_one({"_id": details_id}, {
-        "$push": {
-            "application_status": {
-                "role_id": role_id,
-                "status": 1,
-                "score": score
+    # Retrieve the role and candidate information
+    role = roles_col.find_one({"_id": role_id})
+    if not role:
+        return jsonify({'message': 'Role not found'}), 404
+
+    candidate = students_col.find_one({"_id": ObjectId(details_id)})
+    if not candidate:
+        return jsonify({'message': 'Candidate not found'}), 404
+
+    # Prepare the references for analysis
+    matching_data = {
+        "job": role['jd_extract'],  # Assuming 'jd_extract' contains the job requirements
+        "candidate": candidate['resume_extract']  # Assuming 'resume_extract' contains the candidate's qualifications
+    }
+
+    # Send the data to the FastAPI analysis service
+    analysis_endpoint = "http://127.0.0.1:7000/matching/analyse"
+    response = requests.post(analysis_endpoint, json=matching_data)
+
+    if response.status_code == 200:
+        response_content = response.json()
+        score = response_content.get("score", 0)
+        summary_comment = response_content.get("summary_comment", "No summary available")
+
+        # Update the candidate's application status with the analysis result
+        students_col.update_one(
+            {"_id": details_id},
+            {
+                "$push": {
+                    "application_status": {
+                        "role_id": role_id,
+                        "status": 2,
+                        "score": score,
+                        "summary_comment": summary_comment
+                    }
+                }
             }
-        }
-    })
+        )
 
-    roles_col.update_one({"_id": role_id}, {
-        "$push": {"candidates": ObjectId(details_id)}
-    })
+        # Update the role document with the candidate
+        roles_col.update_one(
+            {"_id": role_id},
+            {"$push": {"candidates": ObjectId(details_id)}}
+        )
 
-    return jsonify({'message': 'Application successful'}), 200
+        return jsonify({'message': 'Application successful', 'score': score, 'summary_comment': summary_comment}), 200
+
+    else:
+        return jsonify({'message': 'Failed to analyze candidate', 'error': response.text}), 500
+
 
 @app.route('/add-role', methods=['POST'])
 def add_role():
@@ -310,7 +381,7 @@ def upload_jd():
     username = request.form['username']
     role_id = request.form['role_id']
     jd_file = request.files['jd']
-
+    #print(username,role_id)
     user = users_col.find_one({"username": username, "role": "recruiter"})
     if not user:
         return jsonify({'message': 'Recruiter not found'}), 404
@@ -321,23 +392,38 @@ def upload_jd():
 
     # Save the JD file to the server
     role_name = role['roleTitle']
+    #print(role_name)
     filename = f"{username}_{role_name}.pdf"
     file_path = os.path.join(JD_FOLDER, filename)
-
-    #CONVERT AND ADD TO MONGODB
-    
     jd_file.save(file_path)
 
-    # Update the role with the JD file and change status
-    roles_col.update_one(
-        {"_id": ObjectId(role_id)},
-        {"$set": {"jd": file_path, "status": 1}}
-    )
+    jd_file.stream.seek(0)
+    analysis_endpoint = "http://127.0.0.1:7000/job/analyse"
+    files = {"file": (jd_file.filename, jd_file.stream, jd_file.mimetype)}
+    
+    try:
+        response = requests.post(analysis_endpoint, files=files)
+        response.raise_for_status()  # Raise an error for bad status codes
+        
+        # Get the content of the response
+        response_content = response.json()
+        #print("Response Content:", response_content)
+        
+        # Update the details with analysis results
+        roles_col.update_one(
+            {"_id": ObjectId(role_id)},
+            {"$set": {"jd": file_path, "status": 1, "jd_extract": response_content}}
+        )
 
-    updated_role = roles_col.find_one({"_id": ObjectId(role_id)})
-    updated_role['_id'] = str(updated_role['_id'])
-    updated_role['company_id'] = str(updated_role['company_id'])
-    return jsonify({'message': 'JD uploaded and candidates selected', 'role': updated_role}), 200
+        updated_role = roles_col.find_one({"_id": ObjectId(role_id)})
+        updated_role['_id'] = str(updated_role['_id'])
+        updated_role['company_id'] = str(updated_role['company_id'])
+
+        return jsonify({'message': 'JD uploaded and analyzed', 'role': updated_role}), 200
+
+    except requests.exceptions.RequestException as e:
+        print(f"Error communicating with analysis service: {e}")
+        return jsonify({'message': 'Failed to analyze JD', 'error': str(e)}), 500
 
 @app.route('/view-jd/<role_id>', methods=['GET'])
 def view_jd(role_id):
@@ -357,55 +443,61 @@ def view_jd(role_id):
 
     except Exception as e:
         return jsonify({"message": f"Error fetching JD: {str(e)}"}), 500
-
+    
 @app.route('/match_resume', methods=['POST'])
 def match_resume():
     username = request.json['username']
     k = int(request.json['numCandidates'])
-    role_id = request.json['role_id']
-    role = roles_col.find_one({"_id": ObjectId(role_id)})
+    role_id = ObjectId(request.json['role_id'])
+    
+    role = roles_col.find_one({"_id": role_id})
+    if not role:
+        return jsonify({"message": "Role not found"}), 404
 
     available_candidates = role['candidates']
-    if k > len(available_candidates):
-        k = len(available_candidates)
+    if not available_candidates:
+        return jsonify({"message": "No candidates found"}), 404
 
-    if k == len(available_candidates):
-        roles_col.update_one(
-            {"_id": ObjectId(role_id)},
-            {"$set": {"status": 2}}
-        )
-        for cid in available_candidates:
-            score = random.randint(50, 100)
-            students_col.update_one(
-                {"_id": ObjectId(cid), "application_status.role_id": ObjectId(role_id)},
-                {"$set": {"application_status.$.status": 2, "application_status.$.score": score}}
-            )
-        return jsonify({"message": "Candidates updated after matching resume"}), 200
+    candidate_scores = []
+    for cid in available_candidates:
+        candidate = students_col.find_one({"_id": ObjectId(cid)}, {"application_status": 1})
+        if candidate:
+            for app_status in candidate['application_status']:
+                if app_status['role_id'] == role_id:
+                    candidate_scores.append({
+                        "candidate_id": cid,
+                        "score": app_status.get("score", 0)
+                    })
+                    break
 
-    selected_candidates = random.sample(available_candidates, k)
+    candidate_scores.sort(key=lambda x: x["score"], reverse=True)
+    selected_candidates = [candidate['candidate_id'] for candidate in candidate_scores[:k]]
+
     roles_col.update_one(
-        {"_id": ObjectId(role_id)},
+        {"_id": role_id},
         {"$set": {"candidates": selected_candidates, "status": 2}}
     )
 
-    for cid in selected_candidates:
-        score = random.randint(50, 100)
+    for candidate in candidate_scores[:k]:
         students_col.update_one(
-            {"_id": ObjectId(cid), "application_status.role_id": ObjectId(role_id)},
-            {"$set": {"application_status.$.status": 2, "application_status.$.score": score}}
+            {"_id": ObjectId(candidate['candidate_id']), "application_status.role_id": role_id},
+            {"$set": {"application_status.$.status": 2, "application_status.$.score": candidate['score']}}
         )
 
-    # Update the status of the non-selected candidates to 5 (Rejected)
     non_selected_candidates = set(available_candidates) - set(selected_candidates)
     for cid in non_selected_candidates:
         students_col.update_one(
-            {"_id": ObjectId(cid), "application_status.role_id": ObjectId(role_id)},
+            {"_id": ObjectId(cid), "application_status.role_id": role_id},
             {"$set": {"application_status.$.status": 5}}
         )
 
-    return jsonify({"message": "Candidates updated after matching resume"}), 200
+    selected_candidates_str = convert_objectid_to_str(selected_candidates)
 
-from bson import ObjectId
+    return jsonify({
+        "message": "Candidates updated after matching resume",
+        "selected_candidates": selected_candidates_str
+    }), 200
+
 
 @app.route('/fetch-candidates', methods=['POST'])
 def fetch_candidates():

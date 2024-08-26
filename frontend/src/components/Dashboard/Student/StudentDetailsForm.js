@@ -65,7 +65,6 @@ const StudentDetailsForm = ({ user, setDetailsExist }) => {
     formData.append("gender", details.gender);
     formData.append("gpa", details.gpa);
     formData.append("resume", details.resume);
-
     try {
       await axios.post("http://localhost:5000/update-details", formData, {
         headers: {
