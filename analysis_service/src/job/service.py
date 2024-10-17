@@ -66,7 +66,7 @@ def analyse_job(cv_content):
     start = time.time()
     LOGGER.info("Start analyse job")
 
-    llm = ChatGoogleGenerativeAI(model='gemini-1.5-pro', temperature=0.5)
+    llm = ChatGoogleGenerativeAI(model='gemini-1.5-flash', temperature=0.5)
     completion = llm.invoke(
         [
             SystemMessage(content=system_prompt_job),

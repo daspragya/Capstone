@@ -1,0 +1,44 @@
+.ql-toolbar .ql-stroke,
+.ql-toolbar .ql-fill,
+.ql-toolbar .ql-picker,
+.ql-toolbar .ql-picker-label,
+.ql-toolbar .ql-picker-options {
+  color: white !important;
+  stroke: white !important;
+}
+
+.ql-toolbar {
+  background-color: #333333; /* Dark background for toolbar */
+  border-radius: 4px;
+  padding: 8px;
+}
+
+/* Style for the Quill editor container */
+.ql-container {
+  background-color: #2c2c2c; /* Dark background for text area */
+  border-radius: 4px;
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+  border: 1px solid #444444;
+  min-height: 150px;
+  color: white; /* White text color */
+}
+
+/* Specific styles for the heading dropdown and paragraph options */
+.ql-toolbar .ql-picker.ql-header .ql-picker-label {
+  color: white !important; /* White text color for heading dropdown label */
+}
+
+.ql-toolbar .ql-picker.ql-header .ql-picker-options {
+  background-color: #444444; /* Dark background for dropdown options */
+  color: white !important; /* White text color for dropdown options */
+}
+
+.ql-toolbar .ql-picker.ql-header .ql-picker-options .ql-picker-item {
+  color: white !important; /* Ensure dropdown items are white */
+}
+
+.ql-toolbar .ql-picker.ql-header .ql-picker-options .ql-picker-item:hover,
+.ql-toolbar .ql-picker.ql-header .ql-picker-options .ql-picker-item.ql-active {
+  background-color: #555555; /* Slightly lighter background on hover and active */
+}

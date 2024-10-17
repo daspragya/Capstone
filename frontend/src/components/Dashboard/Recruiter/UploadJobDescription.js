@@ -70,95 +70,144 @@ const UploadJobDescription = ({ handleJDUpload }) => {
             onChange={onFileChange}
           />
           <label htmlFor="upload-file">
-            <Button variant="contained" color="primary" component="span">
-              Choose File
-            </Button>
-          </label>
-        </Box>
-
-        <Dialog
-          open={openDialog}
-          onClose={handleCloseDialog}
-          maxWidth="md"
-          fullWidth
-        >
-          <DialogTitle>Preview Job Description</DialogTitle>
-          <DialogContent>
-            {fileUrl && (
-              <Box
-                position="relative"
-                border="1px solid #ccc"
-                borderRadius="8px"
-                overflow="hidden"
-                height="600px"
-                display="flex"
-                justifyContent="center"
-                alignItems="center"
-              >
-                <canvas
-                  ref={canvasRef}
-                  style={{ maxWidth: "100%", maxHeight: "100%" }}
-                />
-                {page > 1 && (
-                  <IconButton
-                    onClick={() => setPage(page - 1)}
-                    style={{
-                      position: "absolute",
-                      left: "10px",
-                      top: "50%",
-                      transform: "translateY(-50%)",
-                      backgroundColor: "rgba(0,0,0,0.5)",
-                      color: "white",
-                    }}
-                  >
-                    <ArrowBackIosNewIcon />
-                  </IconButton>
-                )}
-                {pdfDocument && page < pdfDocument.numPages && (
-                  <IconButton
-                    onClick={() => setPage(page + 1)}
-                    style={{
-                      position: "absolute",
-                      right: "10px",
-                      top: "50%",
-                      transform: "translateY(-50%)",
-                      backgroundColor: "rgba(0,0,0,0.5)",
-                      color: "white",
-                    }}
-                  >
-                    <ArrowForwardIosIcon />
-                  </IconButton>
-                )}
-              </Box>
-            )}
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={handleCloseDialog} color="secondary">
-              Cancel
-            </Button>
             <Button
               variant="contained"
               color="primary"
-              onClick={handleSubmit}
-              disabled={loading}
+              component="span"
+              sx={{
+                padding: "10px 20px",
+                borderRadius: "8px",
+                transition: "background-color 0.3s",
+                backgroundColor: "#333333", // Dark gray for the button background
+                "&:hover": {
+                  backgroundColor: "#444444", // Slightly lighter dark gray on hover
+                },
+                color: "#FFFFFF", // White text for readability
+              }}
             >
-              Submit Job Description
+              Upload File
             </Button>
-          </DialogActions>
-          {loading && (
-            <Box
-              display="flex"
-              justifyContent="center"
-              alignItems="center"
-              marginTop="20px"
-            >
-              <CircularProgress />
-              <Typography variant="body1" style={{ marginLeft: "10px" }}>
-                Processing, please wait...
-              </Typography>
-            </Box>
-          )}
-        </Dialog>
+          </label>
+
+          <Dialog
+            open={openDialog}
+            onClose={handleCloseDialog}
+            maxWidth="md"
+            fullWidth
+            sx={{
+              "& .MuiDialogContent-root": {
+                padding: "20px",
+                backgroundColor: "#333", // Dark background for content
+              },
+              "& .MuiDialogActions-root": {
+                padding: "10px 20px",
+                backgroundColor: "#333", // Dark background for actions
+                borderTop: "1px solid #444", // Lighter border color for separation
+              },
+            }}
+          >
+            <DialogTitle sx={{ backgroundColor: "#222", color: "#fff" }}>
+              Preview Job Description
+            </DialogTitle>
+            <DialogContent>
+              {fileUrl && (
+                <Box
+                  position="relative"
+                  border="1px solid #555" // Lighter border color for contrast
+                  borderRadius="8px"
+                  overflow="hidden"
+                  height="600px"
+                  display="flex"
+                  justifyContent="center"
+                  alignItems="center"
+                  sx={{
+                    padding: "10px",
+                    backgroundColor: "#444", // Dark background for PDF preview
+                  }}
+                >
+                  <canvas
+                    ref={canvasRef}
+                    style={{ maxWidth: "100%", maxHeight: "100%" }}
+                  />
+                  {page > 1 && (
+                    <IconButton
+                      onClick={() => setPage(page - 1)}
+                      sx={{
+                        position: "absolute",
+                        left: "10px",
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        backgroundColor: "rgba(255,255,255,0.1)", // Light overlay in dark mode
+                        color: "#fff",
+                        "&:hover": {
+                          backgroundColor: "rgba(255,255,255,0.2)", // Slightly lighter on hover
+                        },
+                      }}
+                    >
+                      <ArrowBackIosNewIcon />
+                    </IconButton>
+                  )}
+                  {pdfDocument && page < pdfDocument.numPages && (
+                    <IconButton
+                      onClick={() => setPage(page + 1)}
+                      sx={{
+                        position: "absolute",
+                        right: "10px",
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        backgroundColor: "rgba(255,255,255,0.1)", // Light overlay in dark mode
+                        color: "#fff",
+                        "&:hover": {
+                          backgroundColor: "rgba(255,255,255,0.2)", // Slightly lighter on hover
+                        },
+                      }}
+                    >
+                      <ArrowForwardIosIcon />
+                    </IconButton>
+                  )}
+                </Box>
+              )}
+            </DialogContent>
+            <DialogActions>
+              <Button
+                onClick={handleCloseDialog}
+                color="secondary"
+                sx={{ color: "#fff" }}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={handleSubmit}
+                disabled={loading}
+              >
+                Submit Job Description
+              </Button>
+            </DialogActions>
+            {loading && (
+              <Box
+                display="flex"
+                justifyContent="center"
+                alignItems="center"
+                marginTop="20px"
+                sx={{
+                  padding: "10px",
+                  borderTop: "1px solid #444", // Lighter border color for separation
+                  backgroundColor: "#333", // Dark background for loading area
+                }}
+              >
+                <CircularProgress color="inherit" />
+                <Typography
+                  variant="body1"
+                  style={{ marginLeft: "10px", color: "#fff" }}
+                >
+                  Processing, please wait...
+                </Typography>
+              </Box>
+            )}
+          </Dialog>
+        </Box>
       </div>
     </div>
   );

@@ -2,7 +2,16 @@ import React, { useState, useEffect } from "react";
 import ProfileUpdate from "./ProfileUpdate";
 import AddRole from "./AddRole";
 import RoleManagement from "./RoleManagement";
-import { Tabs, Tab, Box, Typography } from "@mui/material";
+import {
+  Tabs,
+  Tab,
+  Box,
+  Typography,
+  Card,
+  CardContent,
+  Link,
+  Grid,
+} from "@mui/material";
 import axios from "axios";
 
 const RecruiterPage = ({ user }) => {
@@ -12,7 +21,7 @@ const RecruiterPage = ({ user }) => {
 
   const fetchRoles = async () => {
     try {
-      const response = await axios.get(`http://localhost:5000/get-roles`, {
+      const response = await axios.get("http://localhost:5000/get-roles", {
         params: { username: user.username },
       });
       setRoles(response.data.roles);
@@ -38,42 +47,83 @@ const RecruiterPage = ({ user }) => {
       {!detailsExist ? (
         <ProfileUpdate user={user} setDetailsExist={setDetailsExist} />
       ) : (
-        <>
-          {roles.length === 0 ? (
-            <div style={{ textAlign: "center", marginBottom: "20px" }}>
-              <Typography variant="h6">No roles added yet</Typography>
-              <AddRole setRoles={fetchRoles} user={user} />
-            </div>
-          ) : (
-            <>
-              <AddRole setRoles={fetchRoles} user={user} />
-              <Box
-                sx={{
-                  borderBottom: 1,
-                  borderColor: "divider",
-                  marginBottom: "20px",
-                }}
-              >
-                <Tabs
-                  value={selectedTab}
-                  onChange={handleTabChange}
-                  aria-label="role tabs"
+        <Grid container spacing={2}>
+          <Grid item xs={12} md={8}>
+            {roles.length === 0 ? (
+              <div style={{ textAlign: "center", marginBottom: "20px" }}>
+                <Typography variant="h6">No roles added yet</Typography>
+                <AddRole setRoles={fetchRoles} user={user} />
+              </div>
+            ) : (
+              <>
+                <AddRole setRoles={fetchRoles} user={user} />
+                <Box
+                  sx={{
+                    borderBottom: 1,
+                    borderColor: "divider",
+                    marginBottom: "20px",
+                  }}
                 >
-                  {roles.map((role, index) => (
-                    <Tab label={role.roleTitle} key={index} />
-                  ))}
-                </Tabs>
-              </Box>
+                  <Tabs
+                    value={selectedTab}
+                    onChange={handleTabChange}
+                    aria-label="role tabs"
+                  >
+                    {roles.map((role, index) => (
+                      <Tab label={role.roleTitle} key={index} />
+                    ))}
+                  </Tabs>
+                </Box>
 
-              {roles.length > 0 && (
-                <RoleManagement
-                  role={roles[selectedTab]}
-                  handleRoleUpdate={handleRoleUpdate}
-                />
-              )}
-            </>
-          )}
-        </>
+                {roles.length > 0 && (
+                  <RoleManagement
+                    role={roles[selectedTab]}
+                    handleRoleUpdate={handleRoleUpdate}
+                  />
+                )}
+              </>
+            )}
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <Box
+              sx={{ position: "sticky", top: "20px", height: "fit-content" }}
+            >
+              <Card style={{ marginBottom: "20px" }}>
+                <CardContent>
+                  <Typography variant="h5" gutterBottom>
+                    {user.details.companyName || "Company Name"}
+                  </Typography>
+                  <Typography
+                    variant="body1"
+                    sx={{
+                      mb: 2,
+                      "& p": { margin: "8px 0" },
+                      "& br": { display: "none" },
+                    }}
+                    dangerouslySetInnerHTML={{
+                      __html:
+                        user.details.companyDesc || "No description available.",
+                    }}
+                  />
+                  <Typography variant="body2" sx={{ mb: 2 }}>
+                    Website:{" "}
+                    {user.details.companyWebsite ? (
+                      <Link
+                        href={user.details.companyWebsite}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        {user.details.companyWebsite}
+                      </Link>
+                    ) : (
+                      "No website available"
+                    )}
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Box>
+          </Grid>
+        </Grid>
       )}
     </div>
   );

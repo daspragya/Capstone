@@ -10,11 +10,15 @@ import {
   Typography,
 } from "@mui/material";
 import axios from "axios";
+import "react-quill/dist/quill.snow.css"; // Import the Quill CSS for styling
+import ReactQuill from "react-quill"; // Import the Quill component
 
 const AddRole = ({ setRoles, user }) => {
   const [open, setOpen] = useState(false);
   const [newRole, setNewRole] = useState("");
   const [newRoleDescription, setNewRoleDescription] = useState("");
+  const [Location, setNewLocation] = useState("");
+  const [CTC, setNewCTC] = useState("");
   const [roleDescriptionError, setRoleDescriptionError] = useState(false);
   const [roleNameError, setRoleNameError] = useState(false);
 
@@ -24,7 +28,11 @@ const AddRole = ({ setRoles, user }) => {
       return;
     }
 
-    if (newRoleDescription.length < 250) {
+    const plainTextDescription = newRoleDescription.replace(
+      /<\/?[^>]+(>|$)/g,
+      ""
+    ); // Strip HTML tags
+    if (plainTextDescription.length < 250) {
       setRoleDescriptionError(true);
       return;
     }
@@ -32,15 +40,21 @@ const AddRole = ({ setRoles, user }) => {
     const newRoleData = {
       RoleTitle: newRole,
       RoleDescription: newRoleDescription,
+      Location: Location,
+      CTC: CTC,
     };
     try {
       await axios.post(`http://localhost:5000/add-role`, {
         username: user.username,
         role: newRoleData,
+        location: Location,
+        totalCTC: CTC,
       });
       setRoles();
       setNewRole("");
       setNewRoleDescription("");
+      setNewLocation("");
+      setNewCTC("");
       setRoleDescriptionError(false);
       setRoleNameError(false);
       setOpen(false);
@@ -84,29 +98,52 @@ const AddRole = ({ setRoles, user }) => {
             />
           </Box>
           <Box mb={2} sx={{ width: "100%" }}>
-            <TextField
-              label="Role Description"
+            <Typography variant="body1" gutterBottom>
+              Role Description
+            </Typography>
+            <ReactQuill
+              theme="snow"
               value={newRoleDescription}
-              onChange={(e) => {
-                setNewRoleDescription(e.target.value);
-                if (e.target.value.length >= 250) {
+              onChange={(value) => {
+                setNewRoleDescription(value);
+                const plainText = value.replace(/<\/?[^>]+(>|$)/g, ""); // Strip HTML tags for character count
+                if (plainText.length >= 250) {
                   setRoleDescriptionError(false);
                 }
               }}
-              fullWidth
-              multiline
-              rows={4}
-              required
-              error={roleDescriptionError}
-              helperText={
-                roleDescriptionError
-                  ? "Role description must be at least 250 characters."
-                  : ""
-              }
+              placeholder="Enter role description..."
+              style={{ marginBottom: "20px" }}
             />
+            {roleDescriptionError && (
+              <Typography color="error">
+                Role description must be at least 250 characters.
+              </Typography>
+            )}
             <Typography variant="body2" color="textSecondary" align="right">
-              {newRoleDescription.length}/250
+              {newRoleDescription.replace(/<\/?[^>]+(>|$)/g, "").length}/250
             </Typography>
+          </Box>
+          <Box mb={2} sx={{ width: "100%" }}>
+            <TextField
+              label="Location"
+              value={Location}
+              onChange={(e) => {
+                setNewLocation(e.target.value);
+              }}
+              fullWidth
+              required
+            />
+          </Box>
+          <Box mb={2} sx={{ width: "100%" }}>
+            <TextField
+              label="Total CTC"
+              value={CTC}
+              onChange={(e) => {
+                setNewCTC(e.target.value);
+              }}
+              fullWidth
+              required
+            />
           </Box>
         </DialogContent>
         <DialogActions>

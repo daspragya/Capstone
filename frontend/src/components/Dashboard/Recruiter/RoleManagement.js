@@ -7,7 +7,10 @@ import {
   DialogActions,
   IconButton,
   Box,
+  Card,
+  CardContent,
 } from "@mui/material";
+import Divider from "@mui/material/Divider";
 import { AuthContext } from "../../../context/AuthContext";
 import UploadJobDescription from "./UploadJobDescription";
 import FetchCandidates from "./FetchCandidates";
@@ -28,23 +31,6 @@ const RoleManagement = ({ role, handleRoleUpdate }) => {
   const [dialogContent, setDialogContent] = useState("");
   const [handleSubmit, setHandleSubmit] = useState(() => () => {});
   const [selectedCandidates, setSelectedCandidates] = useState([]);
-  const [columns, setColumns] = useState([
-    { field: "legalName", headerName: "Name", width: 150 },
-    { field: "gpa", headerName: "GPA", width: 100 },
-    { field: "gender", headerName: "Gender", width: 100 },
-    {
-      field: "resume",
-      headerName: "Resume",
-      width: 200,
-      renderCell: (params) => (
-        <a href={params.value} target="_blank" rel="noopener noreferrer">
-          View Resume
-        </a>
-      ),
-    },
-    { field: "score", headerName: "Score", width: 150 },
-  ]);
-
   const [page, setPage] = useState(1);
   const canvasRef = useRef(null);
   const [pdfFileUrl, setPdfFileUrl] = useState(null);
@@ -53,6 +39,7 @@ const RoleManagement = ({ role, handleRoleUpdate }) => {
     page,
     canvasRef,
   });
+  console.log(role);
 
   const handleViewJD = async () => {
     setLoading(true);
@@ -153,12 +140,6 @@ const RoleManagement = ({ role, handleRoleUpdate }) => {
         role_id: role.role_id,
       });
       handleRoleUpdate();
-      if (!columns.some((column) => column.field === "score")) {
-        setColumns((prevColumns) => [
-          ...prevColumns,
-          { field: "score", headerName: "Interview Score", width: 150 },
-        ]);
-      }
     } catch (error) {
       console.error("Failed to finish interviews", error);
     } finally {
@@ -186,41 +167,53 @@ const RoleManagement = ({ role, handleRoleUpdate }) => {
           View JD
         </Button>
       )}
-      <h2>{role.roleTitle} role</h2>
+      <h2>{role.roleTitle} Role</h2>
       <h3>Description</h3>
-      <Typography variant="body1" style={{ marginBottom: "20px" }}>
-        {role.roleDescription}
-      </Typography>
+      <Typography
+        variant="body1"
+        style={{ marginBottom: "20px" }}
+        sx={{ "& p": { margin: "8px 0" }, "& br": { display: "none" } }}
+        dangerouslySetInnerHTML={{ __html: role.roleDescription }}
+      />
 
-      {role.status === 0 && (
-        <UploadJobDescription
-          jdFile={jdFile}
-          handleJDUpload={handleJDUpload}
-          loading={loading}
-        />
-      )}
-      {!loading && role.status === 1 && (
-        <FetchCandidates
-          candidates={role.candidates}
-          handleFetch={handleFetch}
-          handleRefresh={handleRoleUpdate}
-        />
-      )}
-      {!loading && (role.status === 2 || role.status === 4) && (
-        <CandidateDataGrid
-          role={role}
-          columns={columns}
-          setSelectedCandidates={setSelectedCandidates}
-          handleConductInterviews={handleConductInterviews}
-          selectedCandidates={selectedCandidates}
-          status={role.status}
-        />
-      )}
-      {!loading && role.status === 3 && (
-        <Button onClick={handleFinishInterviews} color="primary">
-          Finish Interviews and Generate Scores
-        </Button>
-      )}
+      <Box mt={4} mb={2}>
+        <Typography variant="h6">
+          {role.status === 0 && "Upload Job Description"}
+          {role.status === 1 && "Fetch Candidates"}
+          {(role.status === 2 || role.status === 4) && "Review Candidates"}
+          {role.status === 3 && "Finish Interviews"}
+        </Typography>
+      </Box>
+      <Divider />
+
+      <Box mt={2} mb={4}>
+        {role.status === 0 && (
+          <UploadJobDescription
+            jdFile={jdFile}
+            handleJDUpload={handleJDUpload}
+            loading={loading}
+          />
+        )}
+        {!loading && role.status === 1 && (
+          <FetchCandidates
+            candidates={role.candidates}
+            handleFetch={handleFetch}
+            handleRefresh={handleRoleUpdate}
+          />
+        )}
+        {!loading && (role.status === 2 || role.status === 4) && (
+          <CandidateDataGrid
+            role={role}
+            setSelectedCandidates={setSelectedCandidates}
+            selectedCandidates={selectedCandidates}
+          />
+        )}
+        {!loading && role.status === 3 && (
+          <Button onClick={handleFinishInterviews} color="primary">
+            Finish Interviews and Generate Scores
+          </Button>
+        )}
+      </Box>
       <ConfirmDialog
         openDialog={openDialog}
         setOpenDialog={setOpenDialog}

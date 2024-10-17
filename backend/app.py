@@ -232,15 +232,19 @@ def get_companies():
             visible_roles.append({
                 "role_id": str(role["_id"]),  # Convert ObjectId to string
                 "roleTitle": role['roleTitle'],
+                "location": role['location'],
+                "totalCTC": role['totalCTC'],
                 "roleDescription": role['roleDescription'],
                 "jd": role['jd'],
-                "deadline": role['deadline']
+                "deadline": role['deadline'],
+                "status": 1 if role['status'] == 1 else 0
             })
         if visible_roles:
             response.append({
                 'id': str(rec["_id"]),  # Convert ObjectId to string
                 'name': rec['companyName'],
                 'description': rec['companyDesc'],
+                'website': rec['companyWebsite'],
                 'roles': visible_roles
             })
     return jsonify(response), 200
@@ -288,7 +292,7 @@ def apply_role():
                 "$push": {
                     "application_status": {
                         "role_id": role_id,
-                        "status": 2,
+                        "status": 1,
                         "score": score,
                         "summary_comment": summary_comment
                     }
@@ -319,10 +323,13 @@ def add_role():
         return jsonify({'message': 'Recruiter not found'}), 404
 
     details_id = user['details_id']
+    print(role_data)
     new_role = {
         'company_id': ObjectId(details_id),
         'roleTitle': role_data['RoleTitle'],
         'roleDescription': role_data['RoleDescription'],
+        'location': role_data['Location'],
+        'totalCTC': role_data['CTC'],
         'jd': None,
         'candidates': [],
         'deadline': None,
@@ -443,6 +450,25 @@ def view_jd(role_id):
 
     except Exception as e:
         return jsonify({"message": f"Error fetching JD: {str(e)}"}), 500
+    
+@app.route('/view-resume/<candidate_id>', methods=['GET'])
+def view_resume(candidate_id):
+    try:
+        # Find the role in the database using the role_id
+        student = students_col.find_one({"_id": ObjectId(candidate_id)})
+        if not student or not student.get("resume"):
+            return jsonify({"message": "JD file not found"}), 404
+
+        # Get the file path from the role document
+        file_path = student["resume"]
+        if not os.path.exists(file_path):
+            return jsonify({"message": "Resume file does not exist on the server"}), 404
+
+        # Serve the JD file
+        return send_file(file_path, as_attachment=False)
+
+    except Exception as e:
+        return jsonify({"message": f"Error fetching Resume: {str(e)}"}), 500
     
 @app.route('/match_resume', methods=['POST'])
 def match_resume():

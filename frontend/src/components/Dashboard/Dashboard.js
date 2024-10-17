@@ -80,7 +80,10 @@ const Dashboard = () => {
               onClose={handleClose}
             >
               <MenuItem onClick={handleClose}>
-                {user.username} ({user.role})
+                {user.details.legalName && user.details.legalName !== ""
+                  ? user.details.legalName
+                  : user.username}{" "}
+                ({user.role})
               </MenuItem>
               <MenuItem onClick={handleLogout}>Logout</MenuItem>
             </Menu>

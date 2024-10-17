@@ -35,7 +35,7 @@ def analyse_matching(matching_data):
 
     content = generate_content(job=matching_data.job, candidate=matching_data.candidate)
 
-    llm = ChatGoogleGenerativeAI(model='gemini-1.5-pro', temperature=0.5)
+    llm = ChatGoogleGenerativeAI(model='gemini-1.5-flash', temperature=0.5)
     completion = llm.invoke(
         [
             SystemMessage(content=system_prompt_matching),
@@ -60,7 +60,7 @@ def analyse_matching(matching_data):
     weighted_score = 0
 
     for section in json_output:
-        if section != "summary_comment":
+        if section != "summary_comment" and json_output[section]!="unknown":
             weighted_score += int(json_output[section]["score"]) * weights.get(section, 0)
             total_weight += weights.get(section, 0)
 
