@@ -5,6 +5,7 @@ import random
 from pymongo import MongoClient
 from bson.objectid import ObjectId
 import requests
+from main import generate_syllabus
 
 app = Flask(__name__)
 CORS(app)
@@ -240,6 +241,7 @@ def update_details():
 def create_syllabus():
     data = request.json
     course_name = data.get('courseName')
+    course = data.get('courseName').replace(" ","").lower()
     course_description = data.get('courseDescription')
     username = data.get('username')
     role = data.get('role')
@@ -250,23 +252,28 @@ def create_syllabus():
         return jsonify({'message': 'Teacher not found'}), 404
 
     details_id = user['details_id']
+    try:
+        file_maybe = generate_syllabus(course,username)
+        print(file_maybe)
+    except Exception as e:
+        print(e)
+
     file_name = f"{(username + '_' + course_name).lower().replace(' ', '_')}_syllabus.md"
     file_path = os.path.join("syllabus", file_name)
 
     # Write the syllabus file with course name and description
     
     ## HIT YOUR ENDPOINT HERE
-    with open(file_path, "w") as f:
-        f.write(f"# {course_name} Syllabus\n\n{course_description}\n\nContents go here...")
+   
 
     # Update the syllabus list in the database
     teachers_col.update_one(
         {"_id": details_id},
-        {"$push": {"syllabi": {"courseName": course_name, "courseDescription":course_description, "filePath": file_path}}}
+        {"$push": {"syllabi": {"courseName": course_name, "courseDescription":course_description, "filePath": file_maybe}}}
     )
 
     # Read the file content to return to the frontend
-    with open(file_path, "r") as f:
+    with open(file_maybe, "r") as f:
         syllabus_content = f.read()
 
     return jsonify({
