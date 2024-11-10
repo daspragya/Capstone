@@ -1,0 +1,5 @@
+# Machine Learning Syllabus
+
+Machine learning is a branch of artificial intelligence (AI) that enables systems to learn from data, identify patterns, and make decisions with minimal human intervention. Using algorithms, machine learning models analyze large datasets to find correlations and insights, allowing them to improve their performance over time. The primary types of machine learning include supervised learning, where models learn from labeled data; unsupervised learning, which finds patterns in unlabeled data; and reinforcement learning, where models learn through rewards and penalties. Machine learning powers applications like recommendation systems, fraud detection, image recognition, and natural language processing, transforming industries and everyday tasks.
+
+Contents go here...

@@ -12,7 +12,6 @@ import {
 import RoleDetails from "./RoleDetails";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CancelIcon from "@mui/icons-material/Cancel";
-import CheckIcon from "@mui/icons-material/Check";
 import LockIcon from "@mui/icons-material/Lock"; // New icon for closed applications
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 

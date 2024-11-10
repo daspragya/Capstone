@@ -1,7 +1,7 @@
 import React, { useContext, useState } from "react";
 import { AuthContext } from "../../context/AuthContext";
 import StudentPage from "./Student/StudentPage";
-import TeacherPage from "./TeacherPage";
+import TeacherPage from "./University/TeacherPage";
 import RecruiterPage from "./Recruiter/RecruiterPage";
 import AppBar from "@mui/material/AppBar";
 import Toolbar from "@mui/material/Toolbar";

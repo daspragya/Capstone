@@ -25,6 +25,7 @@ db = client["capstone_project_db"]  # Database name
 users_col = db["users"]  # Users collection
 students_col = db["students"]  # Students collection
 recruiters_col = db["recruiters"]  # Recruiters collection
+teachers_col = db["teachers"]  # Recruiters collection
 roles_col = db["roles"]  # Roles collection
 
 def convert_objectid_to_str(doc):
@@ -63,7 +64,7 @@ def signup():
 
     if users_col.find_one({"username": username}):
         return jsonify({'message': 'User already exists'}), 400
-
+    
     # Create a new entry in the relevant collection based on role
     if role == "student":
         student_id = students_col.insert_one({
@@ -73,12 +74,19 @@ def signup():
             "resume": "",
             "application_status": []
         }).inserted_id
+        details_id = student_id
     elif role == "recruiter":
         recruiter_id = recruiters_col.insert_one({
             "companyName": "",
             "companyDesc": "",
             "roles": []
         }).inserted_id
+        details_id = recruiter_id
+    elif role == "teacher":
+        teacher_id = teachers_col.insert_one({
+            "syllabi": []
+        }).inserted_id
+        details_id = teacher_id
     else:
         return jsonify({'message': 'Invalid role specified'}), 400
 
@@ -87,7 +95,7 @@ def signup():
         "username": username,
         "password": password,
         "role": role,
-        "details_id": student_id if role == "student" else recruiter_id
+        "details_id": details_id
     })
     return jsonify({'message': 'User registered successfully'}), 201
 
@@ -96,14 +104,18 @@ def login():
     data = request.json
     username = data['username']
     password = data['password']
-
     user = users_col.find_one({"username": username, "password": password})
     if not user:
         return jsonify({'message': 'Invalid credentials'}), 401
 
     role = user['role']
     details_id = user['details_id']
-    details = students_col.find_one({"_id": details_id}) if role == "student" else recruiters_col.find_one({"_id": details_id})
+    if role == "student":
+        details = students_col.find_one({"_id": details_id}) 
+    elif role == "teacher":
+        details = teachers_col.find_one({"_id": details_id})
+    else:
+        details = recruiters_col.find_one({"_id": details_id})
 
     return jsonify({
         'message': 'Login successful',
@@ -131,6 +143,8 @@ def refresh_user_details():
         details = students_col.find_one({"_id": ObjectId(details_id)})
     elif role == "recruiter":
         details = recruiters_col.find_one({"_id": ObjectId(details_id)})
+    elif role == "teacher":
+        details = teachers_col.find_one({"_id": ObjectId(details_id)})
     else:
         return jsonify({'message': 'Invalid role specified'}), 400
 
@@ -221,6 +235,210 @@ def update_details():
         recruiters_col.update_one({"_id": ObjectId(details_id)}, {"$set": details})
 
     return jsonify({'message': 'User details updated successfully'}), 200
+
+@app.route('/create-syllabus', methods=['POST'])
+def create_syllabus():
+    data = request.json
+    course_name = data.get('courseName')
+    course_description = data.get('courseDescription')
+    username = data.get('username')
+    role = data.get('role')
+
+    # Validate user
+    user = users_col.find_one({"username": username, "role": role})
+    if not user:
+        return jsonify({'message': 'Teacher not found'}), 404
+
+    details_id = user['details_id']
+    file_name = f"{(username + '_' + course_name).lower().replace(' ', '_')}_syllabus.md"
+    file_path = os.path.join("syllabus", file_name)
+
+    # Write the syllabus file with course name and description
+    
+    ## HIT YOUR ENDPOINT HERE
+    with open(file_path, "w") as f:
+        f.write(f"# {course_name} Syllabus\n\n{course_description}\n\nContents go here...")
+
+    # Update the syllabus list in the database
+    teachers_col.update_one(
+        {"_id": details_id},
+        {"$push": {"syllabi": {"courseName": course_name, "courseDescription":course_description, "filePath": file_path}}}
+    )
+
+    # Read the file content to return to the frontend
+    with open(file_path, "r") as f:
+        syllabus_content = f.read()
+
+    return jsonify({
+        'message': 'Syllabus created successfully',
+        'syllabusContent': syllabus_content
+    }), 201
+
+
+@app.route('/get-syllabi', methods=['GET'])
+def get_syllabi():
+    username = request.args.get('username')
+    role = request.args.get('role')
+
+    # Find user based on username and role
+    user = users_col.find_one({"username": username, "role": role})
+    if not user:
+        return jsonify({'message': 'Teacher not found'}), 404
+
+    # Get the details_id associated with the user
+    details_id = user['details_id']
+    # Retrieve all syllabi for this user from the teachers collection
+    teacher_data = teachers_col.find_one(
+        {"_id": details_id},
+        {"syllabi": 1}  # Only fetch the syllabi field
+    )
+
+    if not teacher_data or "syllabi" not in teacher_data:
+        return jsonify({'message': 'No syllabi found for this user'}), 404
+
+    # Format the syllabus data
+    syllabi_list = []
+    for syllabus in teacher_data['syllabi']:
+        course_name = syllabus.get('courseName')
+        description = syllabus.get('courseDescription')
+        syllabi_list.append({
+            "courseName": course_name,
+            "description": description
+        })
+
+    return jsonify({'syllabi': syllabi_list}), 200
+
+
+
+@app.route('/get-syllabus', methods=['GET'])
+def get_syllabus():
+    username = request.args.get('username')
+    role = request.args.get('role')
+    course_name = request.args.get('courseName')
+
+    user = users_col.find_one({"username": username, "role": role})
+    if not user:
+        return jsonify({'message': 'Teacher not found'}), 404
+
+    details_id = user['details_id']
+    syllabus = teachers_col.find_one(
+        {"_id": details_id, "syllabi.courseName": course_name},
+        {"syllabi.$": 1}
+    )
+
+    if not syllabus or "syllabi" not in syllabus:
+        return jsonify({'message': 'Syllabus not found'}), 404
+
+    file_path = syllabus['syllabi'][0]['filePath']
+
+    try:
+        with open(file_path, "r") as f:
+            syllabus_content = f.read()
+    except FileNotFoundError:
+        return jsonify({'message': 'File not found on server'}), 500
+
+    return jsonify({'syllabusContent': syllabus_content}), 200
+
+# @app.route('/get-syllabus-pdf', methods=['GET'])
+# def get_syllabus_pdf():
+#     try:
+#         username = request.args.get('username')
+#         role = request.args.get('role')
+#         course_name = request.args.get('courseName')
+#         user = users_col.find_one({"username": username, "role": role})
+#         if not user:
+#             return jsonify({'message': 'Teacher not found'}), 404
+
+#         details_id = user['details_id']
+#         syllabus = teachers_col.find_one(
+#             {"_id": details_id, "syllabi.courseName": course_name},
+#             {"syllabi.$": 1}
+#         )
+
+#         if not syllabus or "syllabi" not in syllabus:
+#             return jsonify({'message': 'Syllabus not found'}), 404
+
+#         file_path = syllabus['syllabi'][0]['filePath'].split('.')[0]+'.pdf'
+#         if not os.path.exists(file_path):
+#             print("Not found")
+#             return jsonify({"message": "Syllabus file does not exist on the server"}), 404
+
+#         return send_file(file_path, as_attachment=False)
+
+#     except Exception as e:
+#         print(e)
+#         return jsonify({"message": f"Error fetching Syllabus: {str(e)}"}), 500
+
+
+from spire.doc import *
+from spire.doc.common import *
+
+@app.route('/get-syllabus-pdf', methods=['GET'])
+def get_syllabus_pdf():
+    try:
+        username = request.args.get('username')
+        role = request.args.get('role')
+        course_name = request.args.get('courseName')
+        user = users_col.find_one({"username": username, "role": role})
+        if not user:
+            return jsonify({'message': 'Teacher not found'}), 404
+
+        details_id = user['details_id']
+        syllabus = teachers_col.find_one(
+            {"_id": details_id, "syllabi.courseName": course_name},
+            {"syllabi.$": 1}
+        )
+
+        if not syllabus or "syllabi" not in syllabus:
+            return jsonify({'message': 'Syllabus not found'}), 404
+
+        file_path = syllabus['syllabi'][0]['filePath']
+        document = Document()
+        document.LoadFromFile(file_path)
+        document.SaveToFile(os.path.join("syllabus", "new.pdf"), FileFormat.PDF)
+        document.Dispose()
+        file_path = os.path.join("syllabus", "new.pdf")
+
+        if not os.path.exists(file_path):
+            print("Not found")
+            return jsonify({"message": "Syllabus file does not exist on the server"}), 404
+
+        return send_file(file_path, as_attachment=False)
+
+    except Exception as e:
+        print(e)
+        return jsonify({"message": f"Error fetching Syllabus: {str(e)}"}), 500
+
+@app.route('/modify-syllabus', methods=['POST'])
+def modify_syllabus():
+    data = request.json
+    course_name = data.get('courseName')
+    username = data.get('username')
+    role = data.get('role')
+    new_content = data.get('content')  # New syllabus content from the editor
+
+    # Authenticate user
+    user = users_col.find_one({"username": username, "role": role})
+    if not user:
+        return jsonify({'message': 'Teacher not found'}), 404
+
+    # Get the path to the existing syllabus file
+    file_name = f"{(username+'_'+course_name).lower().replace(' ', '_')}_syllabus.md"
+    file_path = os.path.join("syllabus", file_name)
+
+    # Check if the file exists
+    if not os.path.exists(file_path):
+        return jsonify({'message': 'Syllabus file not found'}), 404
+
+    # Update the syllabus file with new content
+    with open(file_path, "w") as f:
+        f.write(new_content)
+
+    return jsonify({
+        'message': 'Syllabus modified successfully',
+        'syllabusContent': new_content
+    }), 200
+
 
 @app.route('/companies', methods=['GET'])
 def get_companies():
@@ -323,7 +541,6 @@ def add_role():
         return jsonify({'message': 'Recruiter not found'}), 404
 
     details_id = user['details_id']
-    print(role_data)
     new_role = {
         'company_id': ObjectId(details_id),
         'roleTitle': role_data['RoleTitle'],
