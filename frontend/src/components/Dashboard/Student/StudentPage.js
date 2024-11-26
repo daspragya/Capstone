@@ -11,6 +11,7 @@ import StudentDetailsForm from "./StudentDetailsForm";
 import CompanyList from "./CompanyList";
 import ChatIcon from "@mui/icons-material/Chat";
 import courseRecommendation from "./courseRecommendation.png";
+import Recruitement from "./Recruitement.png";
 
 const StudentPage = ({ user }) => {
   const isEmptyDetails = user.details.legalName === "";
@@ -94,6 +95,9 @@ const StudentPage = ({ user }) => {
             height="160"
             image={courseRecommendation}
             alt="Course Recommendation"
+            sx={{
+              objectFit: "contain", // Ensures the image fits within the container
+            }}
           />
           <CardContent>
             <Typography variant="h6" gutterBottom>
@@ -135,8 +139,11 @@ const StudentPage = ({ user }) => {
           <CardMedia
             component="img"
             height="160"
-            image="https://via.placeholder.com/300x160?text=Recruitment"
+            image={Recruitement}
             alt="Recruitment"
+            sx={{
+              objectFit: "contain", // Ensures the image fits within the container
+            }}
           />
           <CardContent>
             <Typography variant="h6" gutterBottom>

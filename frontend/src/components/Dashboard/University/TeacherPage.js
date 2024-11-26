@@ -7,6 +7,7 @@ import PreviousSyllabus from "./PreviousSyllabus";
 import NewSyllabus from "./NewSyllabus";
 import OptmizeSyllabus from "./OptimizeSyllabus";
 import "./TeacherPage.css";
+import "../particles.css";
 
 const TeacherPage = () => {
   const [selectedPage, setSelectedPage] = useState(null);
@@ -67,7 +68,8 @@ const TeacherPage = () => {
             item
             className="card"
             sx={{
-              top: "10%",
+              top: "40%",
+              left: "25%",
               transform: "translate(-50%, -50%)",
             }}
             onClick={() => setSelectedPage("previous")}
@@ -87,8 +89,8 @@ const TeacherPage = () => {
             item
             className="card"
             sx={{
-              top: "50%",
-              left: "90%",
+              top: "40%",
+              left: "80%",
               transform: "translate(-50%, -50%)",
             }}
             onClick={() => setSelectedPage("new")}
@@ -102,7 +104,7 @@ const TeacherPage = () => {
             </Box>
           </Grid>
 
-          <Grid
+          {/* <Grid
             item
             className="card"
             sx={{
@@ -118,7 +120,7 @@ const TeacherPage = () => {
                 Refine the curriculum to better meet student needs.
               </Typography>
             </Box>
-          </Grid>
+          </Grid> */}
         </Grid>
       </Box>
     </>
