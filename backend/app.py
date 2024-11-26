@@ -5,7 +5,7 @@ import random
 from pymongo import MongoClient
 from bson.objectid import ObjectId
 import requests
-from main import generate_syllabus, scrape_course_details
+from main import generate_syllabus, scrape_course_details,generate_jd
 
 app = Flask(__name__)
 CORS(app)
@@ -605,37 +605,21 @@ def jd_creation():
 
     # Extract data from the request
     username = data.get('username')
-    role_domain = data.get('roleDomain')
+    company_domain = data.get('companyWebsite')
     hiring_needs = data.get('hiringNeeds')
     specific_benefits = data.get('specificBenefits')
     company_desc = data.get('companyDesc')
-
+    
+    try:
+        file_path = generate_jd(company_domain,hiring_needs,specific_benefits,company_desc)
+        print(file_path)
+    except Exception as e:
+        print(e)
     # File path for the output markdown file
-    file_path = os.path.join(os.getcwd(), "output_jd.md")
+    
 
     # Create the content for the markdown file
-    markdown_content = f"""
-# Job Description Creation
-
-**Username:** {username}
-
-## Role Domain
-{role_domain}
-
-## Hiring Needs
-{hiring_needs}
-
-## Specific Benefits
-{specific_benefits}
-
-## Company Description
-{company_desc}
-"""
-
-    # Write the content to the markdown file
-    with open(file_path, "w") as f:
-        f.write(markdown_content)
-
+   
     # Send the file to the frontend
     return send_file(file_path, as_attachment=True, download_name="output_jd.md")
 
