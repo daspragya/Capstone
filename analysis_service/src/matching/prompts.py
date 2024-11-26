@@ -115,7 +115,25 @@ fn_matching_analysis = [
                 },
                 "summary_comment": {
                     "type": "string",
-                    "description": "Give comment about matching candidate based on requirement",
+                    "description": "Provide a concise summary for the recruiter about how the candidate matches the job requirements.",
+                },
+                "candidate_feedback": {
+                    "type": "object",
+                    "properties": {
+                        "pros": {
+                            "type": "string",
+                            "description": "Strengths of the candidate's resume with respect to the job description.",
+                        },
+                        "cons": {
+                            "type": "string",
+                            "description": "Weaknesses or areas of improvement in the candidate's resume with respect to the job description.",
+                        },
+                        "skills_to_develop": {
+                            "type": "string",
+                            "description": "Skills or qualifications the candidate should develop to better align with the job description.",
+                        },
+                    },
+                    "required": ["pros", "cons", "skills_to_develop"],
                 },
             },
             "required": [
@@ -126,6 +144,7 @@ fn_matching_analysis = [
                 "certificate",
                 "soft_skill",
                 "summary_comment",
+                "candidate_feedback",
             ],
         },
     }

@@ -5,7 +5,7 @@ import random
 from pymongo import MongoClient
 from bson.objectid import ObjectId
 import requests
-from main import generate_syllabus
+from main import generate_syllabus, scrape_course_details
 
 app = Flask(__name__)
 CORS(app)
@@ -253,18 +253,11 @@ def create_syllabus():
 
     details_id = user['details_id']
     try:
+        scrape_course_details(course_name,course)
         file_maybe = generate_syllabus(course,username)
         print(file_maybe)
     except Exception as e:
         print(e)
-
-    file_name = f"{(username + '_' + course_name).lower().replace(' ', '_')}_syllabus.md"
-    file_path = os.path.join("syllabus", file_name)
-
-    # Write the syllabus file with course name and description
-    
-    ## HIT YOUR ENDPOINT HERE
-   
 
     # Update the syllabus list in the database
     teachers_col.update_one(
@@ -314,8 +307,6 @@ def get_syllabi():
         })
 
     return jsonify({'syllabi': syllabi_list}), 200
-
-
 
 @app.route('/get-syllabus', methods=['GET'])
 def get_syllabus():
@@ -375,7 +366,6 @@ def get_syllabus():
 #     except Exception as e:
 #         print(e)
 #         return jsonify({"message": f"Error fetching Syllabus: {str(e)}"}), 500
-
 
 from spire.doc import *
 from spire.doc.common import *
@@ -509,6 +499,7 @@ def apply_role():
         response_content = response.json()
         score = response_content.get("score", 0)
         summary_comment = response_content.get("summary_comment", "No summary available")
+        candidate_feedback = response_content.get("candidate_feedback", "No feedback available")
 
         # Update the candidate's application status with the analysis result
         students_col.update_one(
@@ -519,7 +510,8 @@ def apply_role():
                         "role_id": role_id,
                         "status": 1,
                         "score": score,
-                        "summary_comment": summary_comment
+                        "summary_comment": summary_comment,
+                        "candidate_feedback": candidate_feedback,
                     }
                 }
             }
@@ -531,7 +523,7 @@ def apply_role():
             {"$push": {"candidates": ObjectId(details_id)}}
         )
 
-        return jsonify({'message': 'Application successful', 'score': score, 'summary_comment': summary_comment}), 200
+        return jsonify({'message': 'Application successful', 'score': score, 'candidate_feedback': candidate_feedback}), 200
 
     else:
         return jsonify({'message': 'Failed to analyze candidate', 'error': response.text}), 500
@@ -771,7 +763,8 @@ def fetch_candidates():
                         "gender": candidate["gender"],
                         "gpa": candidate["gpa"],
                         "resume": candidate["resume"],
-                        "score": app['score']
+                        "score": app['score'],
+                        "summary": app['summary_comment'],
                     }
                     candidates.append(candidate_data)
                     break

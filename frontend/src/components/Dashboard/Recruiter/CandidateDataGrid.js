@@ -8,6 +8,8 @@ import {
   Box,
   IconButton,
   Button,
+  Drawer,
+  Divider,
 } from "@mui/material";
 import axios from "axios";
 import ArrowBackIosNewIcon from "@mui/icons-material/ArrowBackIosNew";
@@ -17,6 +19,8 @@ import { usePdf } from "@mikecousins/react-pdf";
 const CandidateDataGrid = ({ role, setSelectedCandidates }) => {
   const [candidateDetails, setCandidateDetails] = useState([]);
   const [resumeDialogOpen, setResumeDialogOpen] = useState(false);
+  const [summaryDrawerOpen, setSummaryDrawerOpen] = useState(false);
+  const [selectedCandidate, setSelectedCandidate] = useState(null);
   const [pdfFileUrl, setPdfFileUrl] = useState(null);
   const [page, setPage] = useState(1);
   const canvasRef = useRef(null);
@@ -43,10 +47,20 @@ const CandidateDataGrid = ({ role, setSelectedCandidates }) => {
     }
   };
 
+  const handleViewSummary = (candidate) => {
+    setSelectedCandidate(candidate);
+    setSummaryDrawerOpen(true);
+  };
+
   const handleCloseResumeDialog = () => {
     setResumeDialogOpen(false);
     setPdfFileUrl(null);
     setPage(1);
+  };
+
+  const handleCloseSummaryDrawer = () => {
+    setSummaryDrawerOpen(false);
+    setSelectedCandidate(null);
   };
 
   const columns = [
@@ -70,6 +84,23 @@ const CandidateDataGrid = ({ role, setSelectedCandidates }) => {
         </a>
       ),
     },
+    {
+      field: "summary",
+      headerName: "Student Summary",
+      width: 200,
+      renderCell: (params) => (
+        <a
+          href="#"
+          style={{ color: "#3f51b5", textDecoration: "underline" }}
+          onClick={(e) => {
+            e.preventDefault(); // Prevent default anchor behavior
+            handleViewSummary(params.row); // Call the function to view the summary
+          }}
+        >
+          View Summary
+        </a>
+      ),
+    },
     { field: "score", headerName: "Score", width: 150 },
   ];
 
@@ -79,6 +110,7 @@ const CandidateDataGrid = ({ role, setSelectedCandidates }) => {
         "http://localhost:5000/fetch-candidates",
         { role_id: role.role_id }
       );
+      console.log(response);
       setCandidateDetails(response.data);
     } catch (error) {
       console.error("Failed to fetch candidates", error);
@@ -164,6 +196,37 @@ const CandidateDataGrid = ({ role, setSelectedCandidates }) => {
           </Button>
         </DialogActions>
       </Dialog>
+      <Drawer
+        anchor="right"
+        open={summaryDrawerOpen}
+        onClose={handleCloseSummaryDrawer}
+      >
+        <Box width="400px" p={3}>
+          <Typography variant="h6">Student Summary</Typography>
+          <Divider style={{ margin: "10px 0" }} />
+          {selectedCandidate ? (
+            <>
+              <Typography variant="body1">
+                <strong>Name:</strong> {selectedCandidate.legalName}
+              </Typography>
+              <Typography variant="body1">
+                <strong>GPA:</strong> {selectedCandidate.gpa}
+              </Typography>
+              <Typography variant="body1">
+                <strong>Gender:</strong> {selectedCandidate.gender}
+              </Typography>
+              <Typography variant="body1">
+                <strong>Score:</strong> {selectedCandidate.score}
+              </Typography>
+              <Typography variant="body1">
+                <strong>Summary:</strong> {selectedCandidate.summary}
+              </Typography>
+            </>
+          ) : (
+            <Typography>No candidate selected.</Typography>
+          )}
+        </Box>
+      </Drawer>
     </>
   );
 };

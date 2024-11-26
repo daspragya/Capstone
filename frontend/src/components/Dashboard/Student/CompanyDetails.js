@@ -13,6 +13,7 @@ import RoleDetails from "./RoleDetails";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CancelIcon from "@mui/icons-material/Cancel";
 import LockIcon from "@mui/icons-material/Lock"; // New icon for closed applications
+import DoneAllIcon from "@mui/icons-material/DoneAll";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 
 const CompanyDetails = ({ company, onBack, user }) => {
@@ -44,16 +45,14 @@ const CompanyDetails = ({ company, onBack, user }) => {
         case 5: // Rejected
           return <CancelIcon color="error" style={{ marginLeft: "10px" }} />;
         case 4: // Accepted
-          return (
-            <CheckCircleIcon color="success" style={{ marginLeft: "10px" }} />
-          );
         case 3: // Interview completed
         case 2: // Interview stage
-        case 1: // JD submitted, registration open
-          // return <CheckIcon style={{ marginLeft: "10px" }} />;
           return (
             <CheckCircleIcon color="success" style={{ marginLeft: "10px" }} />
           );
+        case 1: // JD submitted, registration open
+          // return <CheckIcon style={{ marginLeft: "10px" }} />;
+          return <DoneAllIcon color="success" style={{ marginLeft: "10px" }} />;
 
         default:
           return null;
@@ -121,6 +120,11 @@ const CompanyDetails = ({ company, onBack, user }) => {
                 sx={{
                   position: "sticky",
                   top: "20px",
+                  overflow: "hidden", // Ensure content doesn't overflow the box
+                  maxHeight: "calc(100vh - 40px)", // Adjust height for sticky positioning
+                  backgroundColor: "#fff",
+                  borderRadius: "8px",
+                  boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)", // Optional shadow for better UI
                 }}
               >
                 <Card>
@@ -136,42 +140,59 @@ const CompanyDetails = ({ company, onBack, user }) => {
                           height: "100px",
                           objectFit: "contain",
                           marginRight: "20px",
-                          backgroundColor: "#f0f0f0", // Light gray background if logo has transparency
+                          backgroundColor: "#f0f0f0", // Light gray background for transparency
                           borderRadius: "8px", // Rounded corners for better aesthetics
                         }}
                         onError={(e) =>
                           (e.target.src = "/default-placeholder.png")
                         }
                       />
-                      <Box>
-                        <Typography variant="h4" gutterBottom>
-                          {company.name}
-                        </Typography>
+                      <Box
+                        sx={{
+                          overflow: "hidden",
+                          textOverflow: "ellipsis", // Truncate overflowing text
+                          maxWidth: "calc(100% - 120px)", // Account for logo width and margin
+                          whiteSpace: "nowrap", // Optional: Keep on one line (adjust as needed)
+                        }}
+                      >
                         <Typography
-                          variant="body2"
-                          color="text.secondary"
+                          variant="h4"
                           gutterBottom
                           sx={{
-                            "& p": { margin: "8px 0" },
-                            "& br": { display: "none" },
+                            wordWrap: "break-word", // Allow breaking long words
+                            overflowWrap: "break-word", // Ensure wrapping for long text
+                            whiteSpace: "normal", // Allow multiple lines
                           }}
-                          dangerouslySetInnerHTML={{
-                            __html: company.description,
-                          }} // Safely render HTML description
-                        />
-                        <Typography variant="body2" color="text.secondary">
-                          Website:{" "}
-                          <Link
-                            href={company.website}
-                            target="_blank"
-                            rel="noopener"
-                            color="primary"
-                          >
-                            {company.website}
-                          </Link>
+                        >
+                          {company.name}
                         </Typography>
                       </Box>
                     </Box>
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      gutterBottom
+                      sx={{
+                        overflowWrap: "break-word", // Break long words
+                        wordWrap: "break-word", // Ensure wrapping for long text
+                        whiteSpace: "pre-line", // Preserve line breaks
+                        "& p": { margin: "8px 0" }, // Adjust paragraph margins
+                      }}
+                      dangerouslySetInnerHTML={{
+                        __html: company.description,
+                      }}
+                    />
+                    <Typography variant="body2" color="text.secondary">
+                      Website:{" "}
+                      <Link
+                        href={company.website}
+                        target="_blank"
+                        rel="noopener"
+                        color="primary"
+                      >
+                        {company.website}
+                      </Link>
+                    </Typography>
                   </CardContent>
                 </Card>
               </Box>

@@ -60,15 +60,19 @@ def analyse_matching(matching_data):
     weighted_score = 0
 
     for section in json_output:
-        if section != "summary_comment" and json_output[section]!="unknown":
+        if section not in ["summary_comment", "candidate_feedback"] and json_output[section] != "unknown":
             weighted_score += int(json_output[section]["score"]) * weights.get(section, 0)
             total_weight += weights.get(section, 0)
 
     final_score = round(weighted_score / total_weight, 2)
 
     # Extract the summary comment
-    summary_comment = json_output.get("summary_comment", "No summary available")
-    print(f"Summary Comment: {summary_comment}")
+    summary_comment = json_output.get("summary_comment", "No recruiter summary available")
+    candidate_feedback = json_output.get("candidate_feedback", {
+        "pros": "No feedback available",
+        "cons": "No feedback available",
+        "skills_to_develop": "No suggestions available"
+    })
 
     LOGGER.info("Done analyse matching")
     LOGGER.info(f"Time analyse matching: {time.time() - start}")
@@ -76,5 +80,6 @@ def analyse_matching(matching_data):
     return {
         "score": final_score,
         "summary_comment": summary_comment,
+        "candidate_feedback": candidate_feedback,
         "detailed_analysis": json_output
     }

@@ -16,11 +16,14 @@ import {
   Grid,
   Card,
   CardContent,
+  Drawer,
+  Divider,
 } from "@mui/material";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CancelIcon from "@mui/icons-material/Cancel";
-import CheckIcon from "@mui/icons-material/Check";
-import LockIcon from "@mui/icons-material/Lock"; // Replace DoNotDisturbOnOutlinedIcon
+import CircularProgress from "@mui/material/CircularProgress";
+import LockIcon from "@mui/icons-material/Lock";
+import DoneAllIcon from "@mui/icons-material/DoneAll";
 import axios from "axios";
 import { usePdf } from "@mikecousins/react-pdf";
 import ArrowBackIosNewIcon from "@mui/icons-material/ArrowBackIosNew";
@@ -32,8 +35,11 @@ import { AuthContext } from "../../../context/AuthContext";
 const RoleDetails = ({ role, onBack, onBackToCompany, company, user }) => {
   const { refreshUserDetails } = useContext(AuthContext);
   const [status, setStatus] = useState(null);
+  const [candidateFeedback, setCandidateFeedback] = useState(null); // Feedback state
+  const [feedbackDrawerOpen, setFeedbackDrawerOpen] = useState(false); // Drawer toggle
   const [showInterview, setShowInterview] = useState(false);
   const [openConfirm, setOpenConfirm] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const [jdDialogOpen, setJdDialogOpen] = useState(false);
   const [resumeDialogOpen, setResumeDialogOpen] = useState(false);
@@ -53,6 +59,11 @@ const RoleDetails = ({ role, onBack, onBackToCompany, company, user }) => {
 
     if (application) {
       setStatus(application.status);
+
+      // Extract candidate_feedback if status is not "Applied"
+      if (application.status >= 1) {
+        setCandidateFeedback(application.candidate_feedback || null);
+      }
     } else {
       if (role.status === 0) setStatus(-1);
       else setStatus(0);
@@ -146,16 +157,24 @@ const RoleDetails = ({ role, onBack, onBackToCompany, company, user }) => {
   };
 
   const renderStatusIcon = () => {
-    if (status === 4) {
+    if (status === 4 || status === 2 || status === 3) {
       return <CheckCircleIcon color="success" style={{ marginLeft: "10px" }} />;
     } else if (status === 5) {
       return <CancelIcon color="error" style={{ marginLeft: "10px" }} />;
     } else if (status === -1) {
       return <LockIcon style={{ marginLeft: "10px" }} />;
     } else if (status !== 0) {
-      return <CheckCircleIcon color="success" style={{ marginLeft: "10px" }} />;
+      return <DoneAllIcon color="success" style={{ marginLeft: "10px" }} />;
     }
     return null;
+  };
+
+  const handleViewFeedback = () => {
+    setFeedbackDrawerOpen(true);
+  };
+
+  const handleCloseFeedbackDrawer = () => {
+    setFeedbackDrawerOpen(false);
   };
 
   const renderStatus = () => {
@@ -175,6 +194,16 @@ const RoleDetails = ({ role, onBack, onBackToCompany, company, user }) => {
             sx={{ marginTop: "10px" }}
           >
             Status: {getStatusText(status)} {renderStatusIcon()}
+            {status >= 1 && candidateFeedback && (
+              <Button
+                variant="outlined"
+                color="secondary"
+                onClick={handleViewFeedback}
+                sx={{ ml: 2 }}
+              >
+                View Feedback
+              </Button>
+            )}
           </Typography>
           {status === 3 && (
             <Button
@@ -414,6 +443,11 @@ const RoleDetails = ({ role, onBack, onBackToCompany, company, user }) => {
           sx={{
             position: "sticky",
             top: "20px",
+            overflow: "hidden", // Ensure content doesn't overflow the box
+            maxHeight: "calc(100vh - 40px)", // Adjust height for sticky positioning
+            backgroundColor: "#fff",
+            borderRadius: "8px",
+            boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)", // Optional shadow for better UI
           }}
         >
           <Card>
@@ -429,44 +463,89 @@ const RoleDetails = ({ role, onBack, onBackToCompany, company, user }) => {
                     height: "100px",
                     objectFit: "contain",
                     marginRight: "20px",
-                    backgroundColor: "#f0f0f0",
-                    borderRadius: "8px",
+                    backgroundColor: "#f0f0f0", // Light gray background for transparency
+                    borderRadius: "8px", // Rounded corners for better aesthetics
                   }}
                   onError={(e) => (e.target.src = "/default-placeholder.png")}
                 />
-                <Box>
-                  <Typography variant="h4" gutterBottom>
-                    {company.name}
-                  </Typography>
+                <Box
+                  sx={{
+                    overflow: "hidden",
+                    textOverflow: "ellipsis", // Truncate overflowing text
+                    maxWidth: "calc(100% - 120px)", // Account for logo width and margin
+                    whiteSpace: "nowrap", // Optional: Keep on one line (adjust as needed)
+                  }}
+                >
                   <Typography
-                    variant="body2"
-                    color="text.secondary"
+                    variant="h4"
                     gutterBottom
                     sx={{
-                      "& p": { margin: "8px 0" },
-                      "& br": { display: "none" },
+                      wordWrap: "break-word", // Allow breaking long words
+                      overflowWrap: "break-word", // Ensure wrapping for long text
+                      whiteSpace: "normal", // Allow multiple lines
                     }}
-                    dangerouslySetInnerHTML={{
-                      __html: company.description,
-                    }}
-                  />
-                  <Typography variant="body2" color="text.secondary">
-                    Website:{" "}
-                    <Link
-                      href={company.website}
-                      target="_blank"
-                      rel="noopener"
-                      color="primary"
-                    >
-                      {company.website}
-                    </Link>
+                  >
+                    {company.name}
                   </Typography>
                 </Box>
               </Box>
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                gutterBottom
+                sx={{
+                  overflowWrap: "break-word", // Break long words
+                  wordWrap: "break-word", // Ensure wrapping for long text
+                  whiteSpace: "pre-line", // Preserve line breaks
+                  "& p": { margin: "8px 0" }, // Adjust paragraph margins
+                }}
+                dangerouslySetInnerHTML={{
+                  __html: company.description,
+                }}
+              />
+              <Typography variant="body2" color="text.secondary">
+                Website:{" "}
+                <Link
+                  href={company.website}
+                  target="_blank"
+                  rel="noopener"
+                  color="primary"
+                >
+                  {company.website}
+                </Link>
+              </Typography>
             </CardContent>
           </Card>
         </Box>
       </Grid>
+
+      {/* Drawer for Feedback */}
+      <Drawer
+        anchor="right"
+        open={feedbackDrawerOpen}
+        onClose={handleCloseFeedbackDrawer}
+      >
+        <Box width="400px" p={3}>
+          <Typography variant="h6">Candidate Feedback</Typography>
+          <Divider sx={{ my: 2 }} />
+          {candidateFeedback ? (
+            <>
+              <Typography variant="body1">
+                <strong>Pros:</strong> {candidateFeedback.pros}
+              </Typography>
+              <Typography variant="body1" sx={{ mt: 2 }}>
+                <strong>Cons:</strong> {candidateFeedback.cons}
+              </Typography>
+              <Typography variant="body1" sx={{ mt: 2 }}>
+                <strong>Skills to Develop:</strong>{" "}
+                {candidateFeedback.skills_to_develop}
+              </Typography>
+            </>
+          ) : (
+            <Typography>No feedback available.</Typography>
+          )}
+        </Box>
+      </Drawer>
     </Grid>
   );
 };
