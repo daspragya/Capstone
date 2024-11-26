@@ -1,5 +1,6 @@
 import React, { useContext, useState } from "react";
 import { AuthContext } from "../../context/AuthContext";
+import { Button } from "@mui/material";
 import StudentPage from "./Student/StudentPage";
 import TeacherPage from "./University/TeacherPage";
 import RecruiterPage from "./Recruiter/RecruiterPage";
@@ -16,6 +17,7 @@ import Typography from "@mui/material/Typography";
 import { useNavigate } from "react-router-dom";
 import JDCreation from "./Recruiter/JDCreation";
 import ManageRecruitment from "./Recruiter/ManageRecruitment";
+import RecruitmentPage from "./Student/ReruitmentPage";
 
 const Dashboard = () => {
   const { user, logout } = useContext(AuthContext);
@@ -53,17 +55,34 @@ const Dashboard = () => {
     setTabValue(newValue);
   };
 
+  const handleCourseRecommendation = () => {
+    window.open("https://course-recomm-sahaay.streamlit.app/", "_blank");
+  };
+
   return (
     <div>
       <AppBar position="static">
         <Toolbar>
           <div style={{ flexGrow: 1 }}>
-            {user.role === "recruiter" && (
+            {user.role === "student" && (
               <Tabs
                 value={tabValue}
                 onChange={handleTabChange}
                 textColor="inherit"
                 indicatorColor="secondary"
+                centered
+              >
+                <Tab label="Home" />
+                <Tab label="Course Recommendation" />
+                <Tab label="Apply for Placements" />
+              </Tabs>
+            )}
+            {user.role === "recruiter" && (
+              <Tabs
+                value={tabValue}
+                onChange={handleTabChange}
+                textColor="inherit"
+                indicatorColor="primary"
                 centered
               >
                 <Tab label="Home" />
@@ -109,7 +128,30 @@ const Dashboard = () => {
         </Toolbar>
       </AppBar>
       <Container>
-        {user.role === "student" && <StudentPage user={user} />}
+        {user.role === "student" && (
+          <>
+            {tabValue === 0 && <StudentPage user={user} />}
+            {tabValue === 1 && (
+              <div>
+                <Typography variant="h4" gutterBottom>
+                  Course Recommendation
+                </Typography>
+                <Typography variant="body1">
+                  Discover courses tailored to your career aspirations.
+                </Typography>
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={handleCourseRecommendation}
+                  sx={{ mt: 3 }}
+                >
+                  Explore Courses
+                </Button>
+              </div>
+            )}
+            {tabValue === 2 && <RecruitmentPage user={user} />}
+          </>
+        )}
         {user.role === "teacher" && <TeacherPage user={user} />}
         {user.role === "recruiter" && (
           <>

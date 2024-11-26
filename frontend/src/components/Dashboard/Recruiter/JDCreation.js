@@ -32,10 +32,10 @@ const JDCreation = ({ user }) => {
 
     const requestData = {
       username: user.username,
-      roleDomain,
+      companyWebsite,
       hiringNeeds,
       specificBenefits,
-      companyDesc: `${plainCompanyDesc} The company website is ${companyWebsite}.`,
+      companyDesc: plainCompanyDesc,
     };
 
     console.log("Submitting data to backend:", requestData);
