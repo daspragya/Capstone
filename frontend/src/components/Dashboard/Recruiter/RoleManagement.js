@@ -39,7 +39,6 @@ const RoleManagement = ({ role, handleRoleUpdate }) => {
     page,
     canvasRef,
   });
-  console.log(role);
 
   const handleViewJD = async () => {
     setLoading(true);
@@ -202,11 +201,33 @@ const RoleManagement = ({ role, handleRoleUpdate }) => {
           />
         )}
         {!loading && (role.status === 2 || role.status === 4) && (
-          <CandidateDataGrid
-            role={role}
-            setSelectedCandidates={setSelectedCandidates}
-            selectedCandidates={selectedCandidates}
-          />
+          <>
+            <CandidateDataGrid
+              role={role}
+              setSelectedCandidates={setSelectedCandidates}
+              selectedCandidates={selectedCandidates}
+            />
+            <Box mt={2} textAlign="center">
+              <Button
+                variant="contained"
+                color="primary"
+                disabled={selectedCandidates.length === 0} // Disable if no candidates selected
+                onClick={() => {
+                  if (selectedCandidates.length > 0) {
+                    handleConductInterviews;
+                    window.open(
+                      "https://interview-ai-gold.vercel.app/dashboard",
+                      "_blank" // Open in a new tab
+                    );
+                  } else {
+                    alert("Please select candidates to conduct interviews.");
+                  }
+                }}
+              >
+                Conduct Interviews
+              </Button>
+            </Box>
+          </>
         )}
         {!loading && role.status === 3 && (
           <Button onClick={handleFinishInterviews} color="primary">

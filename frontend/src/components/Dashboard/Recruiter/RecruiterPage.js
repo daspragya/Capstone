@@ -2,44 +2,20 @@ import React, { useState, useEffect } from "react";
 import ProfileUpdate from "./ProfileUpdate";
 import AddRole from "./AddRole";
 import RoleManagement from "./RoleManagement";
-import {
-  Tabs,
-  Tab,
-  Box,
-  Typography,
-  Card,
-  CardContent,
-  Link,
-  Grid,
-} from "@mui/material";
-import axios from "axios";
+import JDCreation from "./JDCreation"; // New JD Creation Component
+import ManageRecruitment from "./ManageRecruitment"; // New Manage Recruitment Component
+import { Box, Typography, Card, Grid, Container } from "@mui/material";
 
 const RecruiterPage = ({ user }) => {
   const [detailsExist, setDetailsExist] = useState(false);
-  const [selectedTab, setSelectedTab] = useState(0);
-  const [roles, setRoles] = useState([]);
-
-  const fetchRoles = async () => {
-    try {
-      const response = await axios.get("http://localhost:5000/get-roles", {
-        params: { username: user.username },
-      });
-      setRoles(response.data.roles);
-    } catch (error) {
-      console.error("Failed to fetch roles", error);
-    }
-  };
+  const [selectedPage, setSelectedPage] = useState("home"); // Tracks the selected page
 
   useEffect(() => {
     setDetailsExist(user.details.companyName !== "");
-    fetchRoles(); // Load roles from backend when the component mounts
   }, [user.details]);
 
-  const handleTabChange = (event, newValue) => {
-    setSelectedTab(newValue);
-  };
-  const handleRoleUpdate = async () => {
-    await fetchRoles();
+  const handleNavigation = (page) => {
+    setSelectedPage(page);
   };
 
   return (
@@ -47,83 +23,56 @@ const RecruiterPage = ({ user }) => {
       {!detailsExist ? (
         <ProfileUpdate user={user} setDetailsExist={setDetailsExist} />
       ) : (
-        <Grid container spacing={2}>
-          <Grid item xs={12} md={8}>
-            {roles.length === 0 ? (
-              <div style={{ textAlign: "center", marginBottom: "20px" }}>
-                <Typography variant="h6">No roles added yet</Typography>
-                <AddRole setRoles={fetchRoles} user={user} />
-              </div>
-            ) : (
-              <>
-                <AddRole setRoles={fetchRoles} user={user} />
-                <Box
-                  sx={{
-                    borderBottom: 1,
-                    borderColor: "divider",
-                    marginBottom: "20px",
-                  }}
-                >
-                  <Tabs
-                    value={selectedTab}
-                    onChange={handleTabChange}
-                    aria-label="role tabs"
-                  >
-                    {roles.map((role, index) => (
-                      <Tab label={role.roleTitle} key={index} />
-                    ))}
-                  </Tabs>
-                </Box>
-
-                {roles.length > 0 && (
-                  <RoleManagement
-                    role={roles[selectedTab]}
-                    handleRoleUpdate={handleRoleUpdate}
-                  />
-                )}
-              </>
-            )}
-          </Grid>
-          <Grid item xs={12} md={4}>
-            <Box
-              sx={{ position: "sticky", top: "20px", height: "fit-content" }}
-            >
-              <Card style={{ marginBottom: "20px" }}>
-                <CardContent>
-                  <Typography variant="h5" gutterBottom>
-                    {user.details.companyName || "Company Name"}
-                  </Typography>
-                  <Typography
-                    variant="body1"
+        <>
+          {selectedPage === "home" && (
+            <Container>
+              <Grid container spacing={4} justifyContent="center">
+                <Grid item xs={12} sm={6} md={4}>
+                  <Card
+                    onClick={() => handleNavigation("jdCreation")}
                     sx={{
-                      mb: 2,
-                      "& p": { margin: "8px 0" },
-                      "& br": { display: "none" },
+                      cursor: "pointer",
+                      textAlign: "center",
+                      padding: "20px",
+                      "&:hover": { boxShadow: 6 },
                     }}
-                    dangerouslySetInnerHTML={{
-                      __html:
-                        user.details.companyDesc || "No description available.",
+                  >
+                    <Typography variant="h6" gutterBottom>
+                      JD Creation
+                    </Typography>
+                    <Typography variant="body2">
+                      Create job descriptions for your recruitment needs.
+                    </Typography>
+                  </Card>
+                </Grid>
+                <Grid item xs={12} sm={6} md={4}>
+                  <Card
+                    onClick={() => handleNavigation("manageRecruitment")}
+                    sx={{
+                      cursor: "pointer",
+                      textAlign: "center",
+                      padding: "20px",
+                      "&:hover": { boxShadow: 6 },
                     }}
-                  />
-                  <Typography variant="body2" sx={{ mb: 2 }}>
-                    Website:{" "}
-                    {user.details.companyWebsite ? (
-                      <Link
-                        href={user.details.companyWebsite}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        {user.details.companyWebsite}
-                      </Link>
-                    ) : (
-                      "No website available"
-                    )}
-                  </Typography>
-                </CardContent>
-              </Card>
-            </Box>
-          </Grid>
-        </Grid>
+                  >
+                    <Typography variant="h6" gutterBottom>
+                      Manage Recruitment
+                    </Typography>
+                    <Typography variant="body2">
+                      Oversee your recruitment activities and roles.
+                    </Typography>
+                  </Card>
+                </Grid>
+              </Grid>
+            </Container>
+          )}
+
+          {selectedPage === "jdCreation" && <JDCreation user={user} />}
+
+          {selectedPage === "manageRecruitment" && (
+            <ManageRecruitment user={user} />
+          )}
+        </>
       )}
     </div>
   );

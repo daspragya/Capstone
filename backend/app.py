@@ -599,6 +599,74 @@ def get_roles():
     
     return jsonify({"roles": roles}), 200
 
+@app.route('/jd-creation', methods=['POST'])
+def jd_creation():
+    data = request.json
+
+    # Extract data from the request
+    username = data.get('username')
+    role_domain = data.get('roleDomain')
+    hiring_needs = data.get('hiringNeeds')
+    specific_benefits = data.get('specificBenefits')
+    company_desc = data.get('companyDesc')
+
+    # File path for the output markdown file
+    file_path = os.path.join(os.getcwd(), "output_jd.md")
+
+    # Create the content for the markdown file
+    markdown_content = f"""
+# Job Description Creation
+
+**Username:** {username}
+
+## Role Domain
+{role_domain}
+
+## Hiring Needs
+{hiring_needs}
+
+## Specific Benefits
+{specific_benefits}
+
+## Company Description
+{company_desc}
+"""
+
+    # Write the content to the markdown file
+    with open(file_path, "w") as f:
+        f.write(markdown_content)
+
+    # Send the file to the frontend
+    return send_file(file_path, as_attachment=True, download_name="output_jd.md")
+
+@app.route('/save-md-to-pdf', methods=['POST'])
+def save_md_to_pdf():
+    try:
+        # Get the Markdown content from the request
+        data = request.json
+        markdown_content = data.get('markdownContent')
+        if not markdown_content:
+            return jsonify({"message": "Markdown content is required"}), 400
+
+        # Save the Markdown content to a file
+        md_file_path = os.path.join("syllabus", "output_jd.md")
+        with open(md_file_path, "w") as md_file:
+            md_file.write(markdown_content)
+
+        # Convert the Markdown file to a PDF
+        pdf_file_path = os.path.join("syllabus", "output_jd.pdf")
+        document = Document()
+        document.LoadFromFile(md_file_path)
+        document.SaveToFile(pdf_file_path, FileFormat.PDF)
+        document.Dispose()
+
+        # Send the PDF file to the frontend
+        return send_file(pdf_file_path, as_attachment=True)
+
+    except Exception as e:
+        print(e)
+        return jsonify({"message": f"Error processing Markdown: {str(e)}"}), 500
+
 @app.route('/upload-jd', methods=['POST'])
 def upload_jd():
     username = request.form['username']
